@@ -15,13 +15,14 @@ jogo/
 │   ├── camera/          câmera por cima do ombro
 │   └── util/            geradores de geometria low-poly
 ├── characters/          cenas de personagem (.tscn); provisorio/ = modelo gerado por código
-├── weapons/             (etapa 3) cenas e scripts das armas
-├── data/                (etapa 3+) Resources .tres: armas, skins, raridades…
-├── ai/                  (etapa 5) bots
-├── network/             (etapa 8) multiplayer ENet
+├── weapons/             cenas das armas (modelo + pontos Mao/Cano/Mira)
+├── data/                Resources .tres: armas (data/armas) e skins (data/skins_armas)
+├── ai/                  IA dos bots
+├── network/             multiplayer ENet (sala, busca na rede, sincronização)
 ├── ui/                  HUD de toque, mira, menus
-├── assets/              modelos .glb e animações (etapa 6)
+├── assets/              modelos, animações e texturas (CC0; veja assets/CREDITOS.md)
 │   ├── characters/  weapons/  map/  animations/
+├── tools/               geradores (mapa, texturas, armas, skins, roupas)
 └── tests/               testes automáticos (rodam sem tela)
 ```
 
@@ -67,8 +68,8 @@ arquivos e permita "instalar apps desconhecidos" para esse app quando o Android 
 | 5 | Bots e mata-mata | **pronta** |
 | 6 | Modelos 3D e animações | **pronta** |
 | 7 | Personagens, skins, roleta, caixas, progressão | **pronta** |
-| 8 | Multiplayer com um amigo (Wi-Fi) | |
-| 9 | Exportar APK | |
+| 8 | Multiplayer com um amigo (Wi-Fi) | **pronta** |
+| 9 | Exportar APK | **pronta** |
 
 ---
 
@@ -478,6 +479,98 @@ entra sozinha nas caixas e no arsenal. Os bots usam skins aleatórias.
 Teste automático: `godot --headless --path jogo res://tests/teste_auto_etapa7.tscn`
 (XP/nível, recompensas, chances de 10 000 caixas e 3 000 giros, repetidas, compra,
 equipar, salvar/carregar e abertura de todas as telas).
+
+---
+
+## Etapa 8: multiplayer com um amigo (mesma rede Wi-Fi)
+
+### Como jogar
+1. Os dois celulares na **mesma rede Wi-Fi**.
+2. No celular A: **MULTIPLAYER** > digite seu nome > **CRIAR SALA**.
+3. No celular B: **MULTIPLAYER**. A sala de A aparece sozinha na lista ("ENTRAR: sala de ...").
+   Se não aparecer (alguns roteadores bloqueiam a busca), digite o IP que aparece na tela
+   de A e toque em ENTRAR.
+4. No celular A aparece o nome do amigo: escolha a dificuldade dos bots no INÍCIO e toque em
+   **INICIAR PARTIDA**. Bots completam até 5 participantes.
+
+### Como funciona (`network/rede.gd`, `network/sincronizador_personagem.gd`)
+- **ENet** nativo da Godot: a sala é um servidor na porta UDP **7777**. A busca automática usa
+  broadcast UDP na porta **7778** (o host anuncia a sala 1 vez por segundo).
+- **Movimento**: cada celular simula o próprio personagem (resposta imediata) e envia o estado
+  20× por segundo. Os outros são mostrados **100 ms no passado, interpolando** entre os estados
+  (suave mesmo com rede instável) e extrapolando um pouco se faltar pacote.
+- **Tiros**: quem atira calcula o acerto na hora (sem atraso na tela) e pede o dano ao host. O
+  rastro do tiro aparece nos outros celulares.
+- **Host = autoridade**: vida, invencibilidade do rolamento, abates, placar, tempo, renascimento
+  e os bots (que rodam no host e são mostrados nos outros como remotos).
+- Se o host sair, quem estava junto volta ao menu. Se o amigo sair, a partida continua.
+
+Teste automático com **2 processos** (host + cliente na mesma máquina): o cliente acha a sala
+pela busca, entra, se mexe, vê os bots, recebe o placar e o tiro dele mata o host.
+```
+PAPEL=host    godot --headless --path jogo -s res://tests/teste_rede.gd &
+PAPEL=cliente godot --headless --path jogo -s res://tests/teste_rede.gd
+```
+
+### Jogar pela INTERNET (opções)
+O jogo já funciona por IP; o problema da internet é **alcançar** o celular do host.
+
+| Opção | Mexe no código? | Como | Prós / contras |
+|---|---|---|---|
+| **1. Rede virtual (VPN)**: Tailscale ou ZeroTier | não | instale o app nos 2 celulares, entrem na mesma rede; o amigo digita o IP **virtual** do host (ex.: 100.x.x.x) | mais fácil e grátis para uso pessoal; a busca automática não atravessa o Tailscale (digite o IP); ZeroTier pode deixar a busca funcionar |
+| **2. Redirecionar porta** no roteador do host | não | no roteador, mande a porta UDP 7777 para o IP do celular host; o amigo digita o IP público | não funciona em 4G/5G (as operadoras usam CGNAT) e expõe a porta |
+| **3. Servidor dedicado** numa VPS (servidor na nuvem) | um pouco | exportar a versão "servidor" do jogo (Godot headless) para Linux e rodar 24 h; os dois conectam no IP da VPS | o melhor para jogar sempre; custa alguns dólares por mês; precisa criar o modo "host sem jogador" |
+| **4. Serviço de salas/relay**: Nakama (código aberto), W4 Cloud (feito para Godot), WebRTC com servidor de sinalização | sim | trocar a criação da sala por chamadas do serviço | busca de partidas pela internet de verdade; mais trabalho e dependência do serviço |
+
+**Recomendação**: teste já com o **Tailscale ou ZeroTier** (zero código). Se for jogar sempre,
+o próximo passo é o **servidor dedicado** numa VPS barata.
+
+---
+
+## Etapa 9: exportar o APK (passo a passo)
+
+O `export_presets.cfg` já está pronto: arm64-v8a + armeabi-v7a, tela cheia, permissões de rede
+(INTERNET, ACCESS_NETWORK_STATE, ACCESS_WIFI_STATE, CHANGE_WIFI_MULTICAST_STATE), sem os
+testes e ferramentas dentro do APK.
+
+1. **Godot 4.3** (padrão, não .NET): godotengine.org.
+2. **Modelos de exportação**: *Editor > Gerenciar Modelos de Exportação > Baixar e Instalar*.
+3. **JDK 17** (ex.: Adoptium Temurin 17) e **Android SDK** (pelo Android Studio, ou só as
+   "command line tools" com `platform-tools`, `build-tools;34.0.0` e `platforms;android-34`).
+4. *Editor > Configurações do Editor > Exportar > Android*: preencha **Java SDK Path** e
+   **Android SDK Path**. A chave de depuração é criada sozinha.
+5. **Chave de assinatura própria** (para o APK "release"; guarde o arquivo e a senha!):
+   ```
+   keytool -genkeypair -v -keystore telhado.keystore -alias telhado -keyalg RSA -keysize 2048 -validity 10000
+   ```
+   Em *Projeto > Exportar > Android > Keystore > Release* aponte o arquivo, o alias e a senha.
+   **Nunca** suba o `.keystore` para o git (o `.gitignore` já bloqueia).
+6. *Projeto > Exportar > Android > **Exportar Projeto*** (desmarque "Exportar com Debug" para
+   o APK mais rápido). Sai um `.apk`.
+7. **Instalar**: copie o APK para o celular e abra (permita "instalar apps desconhecidos"), ou
+   com o celular no cabo e a Depuração USB ligada: `adb install -r ProjetoTelhado.apk`.
+
+Dicas:
+- Cada versão nova: aumente *Version > Code* no preset para instalar por cima.
+- Um APK assinado com outra chave não atualiza o anterior: desinstale antes.
+- Para a Play Store seria preciso **AAB** (*Gradle Build* + formato AAB). Para uso pessoal,
+  o APK basta.
+- O APK enviado nas conversas foi assinado com uma chave criada no servidor de
+  desenvolvimento. O seu, gerado no PC, terá outra (desinstale o antigo antes de instalar).
+
+---
+
+## Todos os testes automáticos
+
+```
+godot --headless --path jogo res://tests/teste_auto_etapa1.tscn   # movimento e câmera
+godot --headless --path jogo res://tests/teste_auto_etapa2.tscn   # parkour
+godot --headless --path jogo res://tests/teste_auto_etapa3.tscn   # armas
+godot --headless --path jogo res://tests/teste_auto_etapa4.tscn   # mapa
+godot --headless --path jogo res://tests/teste_auto_etapa5.tscn   # bots e mata-mata
+godot --headless --path jogo res://tests/teste_auto_etapa7.tscn   # progressão, caixas, roleta
+(teste de rede: veja a etapa 8)
+```
 
 ### Ajustar a "sensação" do movimento
 

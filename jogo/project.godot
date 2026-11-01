@@ -9,6 +9,8 @@ config/name="Projeto Telhado"
 config/description="TPS com parkour para celular (projeto pessoal)."
 run/main_scene="res://ui/menus/menu_principal.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
+config/icon="res://icone.png"
+boot_splash/bg_color=Color(0.12, 0.11, 0.18, 1)
 
 [autoload]
 

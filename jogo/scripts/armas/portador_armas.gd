@@ -15,6 +15,8 @@ signal arma_trocada(dados: DadosArma)
 signal disparou(dados: DadosArma)
 signal acertou(alvo: Node, dano: float, cabeca: bool, abate: bool)
 signal recarga_iniciada(tempo: float)
+## Para a rede: mostra o rastro do tiro nos outros aparelhos.
+signal tiro_visual(de: Vector3, ate: Vector3)
 
 const MASCARA_TIRO := 1 | 2  # mundo + personagens
 
@@ -310,6 +312,8 @@ func _disparar(d: DadosArma, s: Slot) -> void:
 		var fim: Vector3 = hit.position if hit else origem + dir * d.alcance_maximo
 		if p < 3:  # escopeta: só alguns rastros (economia)
 			Efeitos.rastro(cano, fim, d.cor_rastro)
+		if p == 0:
+			tiro_visual.emit(cano, fim)
 		if hit:
 			var alvo: Object = hit.collider
 			if alvo.has_method("receber_dano"):

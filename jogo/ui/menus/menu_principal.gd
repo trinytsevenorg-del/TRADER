@@ -24,7 +24,7 @@ var _dificuldade := 1
 func _ready() -> void:
 	Controles.menu_aberto = true
 	theme = Tema.obter()
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_montar_base()
 	Progresso.mudou.connect(_atualizar_perfil)
 	_atualizar_perfil()
@@ -38,7 +38,7 @@ func _ready() -> void:
 
 func _montar_base() -> void:
 	var fundo := TextureRect.new()
-	fundo.set_anchors_preset(Control.PRESET_FULL_RECT)
+	fundo.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var grad := Gradient.new()
 	grad.set_color(0, Color(0.95, 0.62, 0.32))
 	grad.set_color(1, Color(0.22, 0.32, 0.55))

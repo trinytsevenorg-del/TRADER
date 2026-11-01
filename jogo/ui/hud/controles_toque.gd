@@ -55,7 +55,7 @@ var _painel_edicao: PanelContainer
 
 func _ready() -> void:
 	add_to_group("controles_toque")
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_fonte = ThemeDB.fallback_font
 	_carregar_layout()
@@ -289,7 +289,7 @@ func _restaurar_padrao() -> void:
 func _criar_painel_edicao() -> void:
 	_painel_edicao = PanelContainer.new()
 	_painel_edicao.visible = false
-	_painel_edicao.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_painel_edicao.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 	_painel_edicao.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_painel_edicao.position.y = 8
 	add_child(_painel_edicao)

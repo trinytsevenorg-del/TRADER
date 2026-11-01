@@ -7,7 +7,7 @@ var _caixa: VBoxContainer
 
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	visible = false
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_montar()
@@ -40,11 +40,11 @@ func _personalizar_hud() -> void:
 func _montar() -> void:
 	var fundo := ColorRect.new()
 	fundo.color = Color(0, 0, 0, 0.55)
-	fundo.set_anchors_preset(Control.PRESET_FULL_RECT)
+	fundo.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(fundo)
 
 	var painel := PanelContainer.new()
-	painel.set_anchors_preset(Control.PRESET_CENTER)
+	painel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	painel.custom_minimum_size = Vector2(620, 0)
 	painel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	painel.grow_vertical = Control.GROW_DIRECTION_BOTH

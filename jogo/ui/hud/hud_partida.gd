@@ -21,7 +21,7 @@ var _fim: Control
 func configurar(jogador: Jogador, modo: ModoMataMata) -> void:
 	_jogador = jogador
 	_modo = modo
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_fonte = ThemeDB.fallback_font
 	modo.abate.connect(_ao_abate)
@@ -152,7 +152,7 @@ func _desenhar_placar(ordem: Array, r: Rect2) -> void:
 
 func mostrar_fim(resultado: Dictionary) -> void:
 	_fim = PanelContainer.new()
-	_fim.set_anchors_preset(Control.PRESET_CENTER)
+	_fim.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	_fim.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_fim.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_fim.custom_minimum_size = Vector2(620, 0)
@@ -200,7 +200,10 @@ func mostrar_fim(resultado: Dictionary) -> void:
 	linha_botoes.alignment = BoxContainer.ALIGNMENT_CENTER
 	linha_botoes.add_theme_constant_override("separation", 16)
 	v.add_child(linha_botoes)
-	for par in [["JOGAR DE NOVO", _jogar_de_novo], ["MENU", _ir_menu]]:
+	var opcoes := [["JOGAR DE NOVO", _jogar_de_novo], ["MENU", _ir_menu]]
+	if Rede.em_rede():
+		opcoes = [["VOLTAR AO MENU", _ir_menu]]  # em rede, o host cria outra partida no lobby
+	for par in opcoes:
 		var b := Button.new()
 		b.text = par[0]
 		b.custom_minimum_size = Vector2(220, 64)
@@ -218,6 +221,7 @@ func _jogar_de_novo() -> void:
 
 func _ir_menu() -> void:
 	Controles.menu_aberto = false
+	Rede.sair()
 	var menu := "res://ui/menus/menu_principal.tscn"
 	if ResourceLoader.exists(menu):
 		get_tree().change_scene_to_file(menu)

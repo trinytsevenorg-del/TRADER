@@ -53,12 +53,13 @@ func criar_jogador_local(nome := "") -> Jogador:
 	return j
 
 
-func criar_bot(indice: int, nome := "") -> Jogador:
+## info (opcional, usado na rede): {personagem, skin, armas}
+func criar_bot(indice: int, nome := "", info := {}) -> Jogador:
 	var b: Jogador = CENA_JOGADOR.instantiate()
 	b.name = "Bot%d" % indice
 	b.tipo = Jogador.Tipo.BOT
-	b.personagem_inicial = randi() % 2
-	b.skin_inicial = randi() % 8
+	b.personagem_inicial = info.get("personagem", randi() % 2)
+	b.skin_inicial = info.get("skin", randi() % 8)
 	var cerebro := CerebroBot.new()
 	cerebro.name = "Cerebro"
 	cerebro.dificuldade = Sessao.dificuldade
@@ -69,7 +70,7 @@ func criar_bot(indice: int, nome := "") -> Jogador:
 	if Sessao.dificuldade == 0:
 		opcoes.erase("agulha_sr")
 		opcoes.erase("coruja_sx")
-	b.armas.equipar_armas([opcoes[randi() % opcoes.size()], CatalogoArmas.SECUNDARIAS[randi() % 2]])
+	b.armas.equipar_armas(info.get("armas", [opcoes[randi() % opcoes.size()], CatalogoArmas.SECUNDARIAS[randi() % 2]]))
 	if nome == "":
 		var livres: Array = Sessao.NOMES_BOTS.duplicate()
 		for p in modo.participantes:
@@ -81,6 +82,7 @@ func criar_bot(indice: int, nome := "") -> Jogador:
 
 func _ao_terminar(resultado: Dictionary) -> void:
 	Sessao.resultado_ultima = resultado
+	Rede.partida_terminou_local()
 	# Para todo mundo
 	for p in modo.participantes:
 		p.no.set_physics_process(false)

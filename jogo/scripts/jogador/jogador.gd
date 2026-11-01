@@ -195,7 +195,13 @@ func _equipar_armas_config() -> void:
 
 
 ## Chamado pelas armas inimigas (hitscan). Devolve o dano aplicado.
+## Em rede, só o HOST aplica dano: os clientes enviam o pedido para ele.
 func receber_dano(quantidade: float, atacante: Node, ponto: Vector3, cabeca: bool) -> float:
+	if Rede.em_partida and not Rede.eh_host():
+		if esta_morto() or invencivel:
+			return 0.0
+		Rede.pedir_dano(self, quantidade, atacante, ponto, cabeca)
+		return quantidade
 	return saude.receber_dano(quantidade, atacante, ponto, cabeca)
 
 
@@ -255,6 +261,9 @@ func renascer(pos: Vector3, yaw: float) -> void:
 	yaw_mira = yaw
 	pitch_mira = 0.0
 	_protecao = tempo_protecao_renascer
+	var sinc := get_node_or_null("Sincronizador")
+	if sinc:
+		sinc.limpar()
 	renasceu.emit()
 
 
@@ -289,6 +298,8 @@ func _achar_modelo() -> void:
 func _physics_process(delta: float) -> void:
 	if tipo == Tipo.REMOTO:
 		# Posição/estado vêm da rede (network/sincronizador_personagem.gd).
+		_protecao -= delta
+		invencivel = estado_remoto == &"rolando" or _protecao > 0.0
 		_atualizar_animacao_remota()
 		return
 	_protecao -= delta
