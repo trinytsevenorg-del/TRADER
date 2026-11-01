@@ -176,6 +176,9 @@ var _empurrao := Vector3.ZERO  # afastamento do corpo visual de paredes (espaço
 ## Velocidade máxima das correções do corpo visual (m/s): suave, sem tranco.
 const VEL_CORRECAO := 3.0
 var _corpo_fisico: CollisionObject3D
+var _peso_postura := 0.0
+var _pitch_norm := 0.0
+var _concha_ombro := Vector3.ZERO   # onde a coronha apoia (pose de mira de fuzil)
 var _queda_livre := true      # achou lugar livre para o corpo cair deitado
 var _bloqueio := 0.0           # 0..1: arma recolhida por parede logo à frente
 # Empunhadura calculada da mão esquerda
@@ -397,6 +400,13 @@ func _process(delta: float) -> void:
 	_peso_mira = move_toward(_peso_mira, _peso_mira_alvo, delta * 8.0)
 	# Pistola encostada na parede: braços recolhem (sai da pose de braços esticados).
 	var peso := _peso_mira * (1.0 - _bloqueio) if not _arma_longa else _peso_mira
+	# Arma longa: o tronco fica sempre na postura de fuzil (de lado, coronha no ombro),
+	# também com a arma baixa — a posição da arma e dos braços foi feita para ela.
+	# (Rolando, escalando, pendurado ou morto o corpo fica livre.)
+	_peso_postura = move_toward(_peso_postura, 1.0 if (_arma_longa and _ik_permitido and not _pendurado) else 0.0, delta * 5.0)
+	peso = maxf(peso, _peso_postura)
+	# o tronco só inclina para cima/baixo com a câmera quando está mirando
+	_arvore.set("parameters/mira/blend_position", _pitch_norm * _peso_mira)
 	_arvore.set("parameters/mistura/blend_amount", peso)
 	_atualizar_bloqueio(delta)
 	_atualizar_arma(delta)
@@ -498,7 +508,8 @@ func _afastar_de_paredes(esp: PhysicsDirectSpaceState3D, delta: float) -> void:
 	# "total" é o que ainda falta afastar a partir da posição ATUAL do corpo visual.
 	total.y = 0.0
 	if total.length() > 0.002:
-		var alvo := (_empurrao + total).limit_length(0.6)
+		# corpo caído (até ~1,8 m de comprimento) pode ser afastado mais
+		var alvo := (_empurrao + total).limit_length(1.2 if _atual == "morrer" else 0.6)
 		_empurrao = _empurrao.move_toward(alvo, delta * VEL_CORRECAO)   # afasta rápido, sem tranco
 		_tempo_livre_parede = 0.0
 	else:
@@ -774,7 +785,7 @@ func _escolher_lado_da_queda() -> void:
 func definir_mira(peso: float, pitch: float) -> void:
 	_peso_mira_alvo = peso
 	_pitch_mira_rad = clampf(pitch, -1.0, 1.0) * deg_to_rad(60.0)
-	_arvore.set("parameters/mira/blend_position", clamp(pitch, -1.0, 1.0))
+	_pitch_norm = clampf(pitch, -1.0, 1.0)
 
 
 # =========================================================================
@@ -822,6 +833,11 @@ func _calibrar_mao() -> void:
 		_ik_d.ajuste_mao = _calibracao_mao.affine_inverse()
 		_ik_e = _novo_ik(BRACO_E, Vector3(0.25, -1, -0.2))
 		_calibrar_mao_esquerda()
+		var corpo := _medir_tronco()
+		for ik in [_ik_d, _ik_e]:
+			ik.tronco = corpo.tronco
+			ik.raio_braco = corpo.raio_braco
+		_concha_ombro = _achar_concha_ombro(anim_fuzil)
 		# Alvos soltos (posição global definida a cada quadro)
 		_alvo_mao_e = _novo_alvo("AlvoRecargaMaoE")
 		_alvo_beirada_d = _novo_alvo("AlvoBeiradaD")
@@ -877,6 +893,123 @@ func _calibrar_mao_esquerda() -> void:
 		var q := _esqueleto.get_bone_rest(b).basis.get_rotation_quaternion()
 		_ik_e.curvar_dedos.append([b, (q * Quaternion(eixo_local, c[2])).normalized()])
 	_ik_e.girar_mao = true
+
+
+## A "concha" do ombro, onde a coronha apoia: parte da articulação do ombro direito
+## (um pouco para dentro e para baixo) e anda para a frente até sair da pele do peito
+## (contorno medido da malha). A coronha encosta na pele — não entra no corpo.
+func _achar_concha_ombro(anim: Animation) -> Vector3:
+	var p := _ombro_d_mira + Vector3(0.05, -0.06, 0)
+	if _ik_d == null or _ik_d.tronco.is_empty():
+		return p + Vector3(0, 0, 0.08)
+	var poses := []
+	for seg in _ik_d.tronco:
+		poses.append(_pose_global_na_animacao(anim, seg[0]).affine_inverse())
+	var raio: float = _ik_d.raio_braco
+	_ik_d.raio_braco = 0.0
+	for k in 40:
+		if _ik_d._dentro_do_tronco(p, poses) <= 0.0:
+			break
+		p.z += 0.005
+	_ik_d.raio_braco = raio
+	return p + Vector3(0, 0, 0.01)
+
+
+## Mede o tronco na malha (para os braços não entrarem no corpo): para cada osso da
+## coluna, a elipse que contém os vértices do tronco ligados a ele (espaço do osso),
+## e a espessura do braço. Fica guardado por malha (todos os bots reaproveitam).
+static var _troncos := {}
+const SETORES_TRONCO := 24
+
+
+func _medir_tronco() -> Dictionary:
+	if _troncos.has(_corpo.mesh):
+		return _troncos[_corpo.mesh]
+	var res := {"tronco": [], "raio_braco": 0.045}
+	var skin := _corpo.skin
+	if skin == null:
+		return res
+	var nomes_tronco := ["spine_01", "spine_02", "spine_03"]
+	var pontos := {}     # bind -> [pontos locais]
+	var braco := []      # distâncias ao eixo do braço
+	var bind_braco := -1
+	var bind_por_nome := {}
+	for i in skin.get_bind_count():
+		var nome := String(skin.get_bind_name(i))
+		if nome == "":
+			nome = _esqueleto.get_bone_name(skin.get_bind_bone(i))
+		bind_por_nome[nome] = i
+		if nome in nomes_tronco:
+			pontos[i] = []
+		if nome == "upperarm_r":
+			bind_braco = i
+	var arr := _corpo.mesh.surface_get_arrays(0)
+	var vs: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+	var bs = arr[Mesh.ARRAY_BONES]
+	var ws = arr[Mesh.ARRAY_WEIGHTS]
+	if bs == null or ws == null:
+		return res
+	var por: int = bs.size() / vs.size()
+	for v in vs.size():
+		var melhor: int = -1
+		var peso: float = 0.0
+		for k in por:
+			if ws[v * por + k] > peso:
+				peso = ws[v * por + k]
+				melhor = bs[v * por + k]
+		if pontos.has(melhor):
+			pontos[melhor].append(skin.get_bind_pose(melhor) * vs[v])
+		elif melhor == bind_braco:
+			var l: Vector3 = skin.get_bind_pose(melhor) * vs[v]
+			braco.append(Vector2(l.x, l.z).length())   # osso aponta em +Y local
+	if braco.size() > 10:
+		braco.sort()
+		res.raio_braco = braco[int(braco.size() * 0.35)]   # braço "relaxado" (não o bíceps inteiro)
+	# Contorno real do tronco: para cada osso da coluna, em cada fatia de altura (4 cm) e
+	# direção em volta do centro (24 setores), a distância até a pele mais afastada.
+	for nome in nomes_tronco:
+		if not bind_por_nome.has(nome) or (pontos[bind_por_nome[nome]] as Array).size() < 20:
+			continue
+		var osso := _esqueleto.find_bone(nome)
+		var lista: Array = pontos[bind_por_nome[nome]]
+		var cx := 0.0
+		var cz := 0.0
+		var ymin := INF
+		var ymax := -INF
+		for q in lista:
+			cx += q.x
+			cz += q.z
+			ymin = minf(ymin, q.y)
+			ymax = maxf(ymax, q.y)
+		cx /= lista.size()
+		cz /= lista.size()
+		var fatias := maxi(1, ceili((ymax - ymin) / 0.04))
+		var perfil := PackedFloat32Array()
+		perfil.resize(fatias * SETORES_TRONCO)
+		for q in lista:
+			var fa := clampi(int((q.y - ymin) / 0.04), 0, fatias - 1)
+			var dx: float = q.x - cx
+			var dz: float = q.z - cz
+			var se := posmod(int(floor((atan2(dx, dz) + PI) / TAU * SETORES_TRONCO)), SETORES_TRONCO)
+			var k := fa * SETORES_TRONCO + se
+			perfil[k] = maxf(perfil[k], sqrt(dx * dx + dz * dz))
+		# setores vazios: o maior vizinho (sem buracos no contorno)
+		for rep in 3:
+			var novo := perfil.duplicate()
+			for fa in fatias:
+				for se in SETORES_TRONCO:
+					var k := fa * SETORES_TRONCO + se
+					if perfil[k] <= 0.0:
+						var m := 0.0
+						for d in [-1, 1]:
+							m = maxf(m, perfil[fa * SETORES_TRONCO + posmod(se + d, SETORES_TRONCO)])
+							if fa + d >= 0 and fa + d < fatias:
+								m = maxf(m, perfil[(fa + d) * SETORES_TRONCO + se])
+						novo[k] = m
+			perfil = novo
+		res.tronco.append([osso, Vector2(cx, cz), ymin, fatias, perfil])
+	_troncos[_corpo.mesh] = res
+	return res
 
 
 ## Pose da mão esquerda segurando a arma: palma encostada, dedos em volta.
@@ -1012,14 +1145,21 @@ func prender_arma(cena: PackedScene, dados: DadosArma = null) -> ModeloArma:
 		# ombro: com menos que isso o braço direito não cabe (pulso torto).
 		var traseira := maxf(_comprimento_traseiro(_arma), 0.2)
 		# Cabo na frente do ombro: a coronha (traseira) encosta no ombro.
-		var cabo := _ombro_d_mira + Vector3(0, 0, 1) * (traseira - 0.03) + Vector3(0.07, -0.08, 0) + aj_pos
+		# A coronha apoia na "concha" do ombro: na FRENTE da articulação (na pele, ~6 cm
+		# à frente), um pouco para dentro (lado do peito) e abaixo — não dentro do ombro.
+		var cabo := _concha_ombro + Vector3(0, 0, 1) * traseira + aj_pos
 		var base := (Basis(Vector3.UP, PI) * aj_rot).scaled(Vector3.ONE * aj_esc)
-		var desejado := Transform3D(base, cabo)
+		# mirando: um pouco à frente e para fora do peitoral (a caixa da arma não entra no
+		# peito; o braço direito fica com espaço)
+		var desejado := Transform3D(base, cabo + Vector3(-0.03, 0, 0.04))
 		_base_arma_mira = _pose_peito_mira.affine_inverse() * desejado * mao_local.affine_inverse()
 		# Pronto baixo: cano inclinado para baixo, girando em volta do ombro
 		var ang := deg_to_rad(dados.angulo_pronto_baixo)
-		var piv := _ombro_d_mira
-		var baixo := Transform3D.IDENTITY.translated(piv + Vector3(0, -0.05, 0)) * Transform3D(Basis(Vector3.RIGHT, ang)) * Transform3D.IDENTITY.translated(-piv) * desejado
+		# gira em volta de onde a coronha apoia (a coronha não sobe para dentro do ombro)
+		var piv := _concha_ombro
+		# ...e vai um pouco para a frente e para fora (lado da mão do cabo): o cabo não
+		# cola na barriga e o braço direito tem espaço (pulso sem dobrar demais).
+		var baixo := Transform3D.IDENTITY.translated(piv + Vector3(-0.05, -0.03, 0.07)) * Transform3D(Basis(Vector3.RIGHT, ang)) * Transform3D.IDENTITY.translated(-piv) * desejado
 		_base_arma_baixa = _pose_peito_mira.affine_inverse() * baixo * mao_local.affine_inverse()
 		_arma.transform = _base_arma_baixa
 		_arma_longa = true

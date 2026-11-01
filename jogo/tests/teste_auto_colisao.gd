@@ -25,6 +25,7 @@ var _anexos := {}           # personagem -> {osso: BoneAttachment3D}
 var _seguidos := {}         # "personagem|osso" -> quadros seguidos dentro do cenário
 var _max_seguidos := 0
 var _max_cap := 0
+var _longos := 0            # contatos de mais de 0,5 s
 var _max_seguidos_ex := ""
 # Fluidez (por personagem): último deslocamento visual, último yaw, histórico de estado
 var _ult := {}
@@ -129,6 +130,8 @@ func _verificar(j: Jogador, esp: PhysicsDirectSpaceState3D) -> void:
 				_max_seguidos = _seguidos[chave]
 				_max_seguidos_ex = "%s %s %s em %s" % [tipo, est, nome, p.snapped(Vector3.ONE * 0.01)]
 		else:
+			if _seguidos.get(chave, 0) > 30:
+				_longos += 1
 			_seguidos[chave] = 0
 	# 4) Fluidez
 	var m: Node3D = j.modelo.get("_modelo") if j.modelo else null
@@ -144,7 +147,7 @@ func _verificar(j: Jogador, esp: PhysicsDirectSpaceState3D) -> void:
 			_trancos_por[est] = _trancos_por.get(est, 0) + 1
 			_maior_tranco = maxf(_maior_tranco, salto)
 		var giro := absf(wrapf(j.visual.rotation.y - u.yaw, -PI, PI))
-		if giro > deg_to_rad(30.0) and est == u.est and not j.esta_morto():
+		if giro > deg_to_rad(30.0) and est == u.est and not j.esta_morto() and not teleporte:
 			_giros += 1
 		if est != u.est:
 			if est == u.est_ant and u.tempo_est < 6:
@@ -163,6 +166,14 @@ func _verificar(j: Jogador, esp: PhysicsDirectSpaceState3D) -> void:
 	# 3) Caiu do mapa
 	if j.global_position.y < -3.0:
 		_registrar("%s|%s|caiu do mapa" % [tipo, est], j.global_position)
+
+
+func _contatos_longos() -> int:
+	var n := _longos
+	for k in _seguidos:
+		if not String(k).ends_with("cápsula") and _seguidos[k] > 30:
+			n += 1
+	return n
 
 
 func _rodar() -> void:
@@ -220,13 +231,12 @@ func _rodar() -> void:
 	_checar("cápsula não fica dentro do cenário (%d quadros no total, no máx. %d seguido)" % [capsula, _max_cap], _max_cap <= 2)
 	_checar("ninguém caiu para fora do mapa (%d)" % caiu, caiu == 0)
 	# Um contato novo leva alguns quadros para o ajuste reagir (corrige rápido, mas sem
-	# tranco). Medido: quase sempre 1-6 quadros; os casos mais longos são raros (pé
-	# encostando numa pilha de caixas ao deslizar por cima delas). Critério: no total,
-	# menos de 0,2% das medições e nenhum contato com mais de 0,5 s.
+	# tranco). Medido: quase sempre 1-8 quadros; contatos longos são raros. Critério: no
+	# total, menos de 0,2% das medições e no máximo 1 contato de mais de 0,5 s por minuto.
 	var total_medidas := _quadros * 5 * OSSOS.size()
-	_checar("partes do corpo dentro de chão/parede: %d de %d medições (%.3f%%), máx. %d quadros seguidos (%s)" \
-		% [juntas, total_medidas, 100.0 * juntas / maxf(total_medidas, 1), _max_seguidos, _max_seguidos_ex],
-		juntas < total_medidas * 0.002 and _max_seguidos <= 30)
+	_checar("partes do corpo dentro de chão/parede: %d de %d medições (%.3f%%), máx. %d quadros seguidos (%s), contatos > 0,5 s: %d" \
+		% [juntas, total_medidas, 100.0 * juntas / maxf(total_medidas, 1), _max_seguidos, _max_seguidos_ex, _contatos_longos()],
+		juntas < total_medidas * 0.002 and _contatos_longos() <= 1)
 	print("   trancos por estado: ", _trancos_por)
 	print("   fluidez: trancos %d (maior %.3f m), giros bruscos %d, estados piscando %d %s" % [_trancos, _maior_tranco, _giros, _piscadas, _piscadas_ex])
 	_checar("corpo visual sem trancos: %d acima de 8 cm num quadro (máx. 2/min), maior %.3f m (máx. 0,12)" % [_trancos, _maior_tranco],

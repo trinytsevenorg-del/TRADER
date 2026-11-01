@@ -387,9 +387,16 @@ func tentar_transpor(_direcao: Vector3) -> bool:
 		if not esp.intersect_ray(q4).is_empty():
 			return false
 		destino = em_cima
+	# O arco inteiro precisa caber (toldo, viga ou laje em cima do obstáculo): tenta o
+	# arco normal; se não couber, um mais baixo; se nem assim, não transpõe.
+	_pico = topo.position.y + 0.3
+	_folga_extra = 0.25
+	if not _arco_livre(pe, destino):
+		_folga_extra = 0.12
+		if not _arco_livre(pe, destino):
+			return false
 	j._escalada_inicio = pe
 	j._escalada_fim = destino
-	_pico = topo.position.y + 0.3
 	var vel := maxf(h.length(), j.velocidade_corrida * 0.9)
 	_vel_saida = frente * vel
 	_duracao_transpor = clampf(pe.distance_to(destino) / vel, 0.25, 0.45)
@@ -400,6 +407,25 @@ func tentar_transpor(_direcao: Vector3) -> bool:
 	return true
 
 
+var _folga_extra := 0.25
+
+
+## Altura do arco do salto no instante t (0..1). Arco "cheio" (sobe cedo): o corpo já
+## está acima do topo quando passa pela quina.
+func _altura_arco(a: Vector3, b: Vector3, t: float) -> float:
+	var folga := maxf(_pico - maxf(a.y, b.y), 0.0) + _folga_extra
+	return lerpf(a.y, b.y, t) + pow(4.0 * t * (1.0 - t), 0.5) * folga
+
+
+func _arco_livre(a: Vector3, b: Vector3) -> bool:
+	for t in [0.2, 0.35, 0.5, 0.65, 0.8]:
+		var p := a.lerp(b, t)
+		p.y = _altura_arco(a, b, t)
+		if not j._espaco_livre(p, j.ALTURA_EM_PE):
+			return false
+	return true
+
+
 func _modo_transpondo() -> void:
 	var t := clampf(j._tempo_modo / _duracao_transpor, 0.0, 1.0)
 	var a := j._escalada_inicio
@@ -407,9 +433,7 @@ func _modo_transpondo() -> void:
 	var p := a.lerp(b, t)
 	# Arco que passa acima do topo do obstáculo
 	var base_y := lerpf(a.y, b.y, t)
-	# Arco "cheio" (sobe cedo): o corpo já está acima do topo quando passa pela quina.
-	var folga := maxf(_pico - maxf(a.y, b.y), 0.0) + 0.25
-	p.y = base_y + pow(4.0 * t * (1.0 - t), 0.5) * folga
+	p.y = _altura_arco(a, b, t)
 	j.global_position = p
 	if t >= 1.0:
 		transpondo = false

@@ -104,3 +104,16 @@ encostando numa caixa ao correr/deslizar rente a pilhas de caixas — o ajuste c
 mas sem tranco (corrigir num quadro só daria "pulos" visíveis); não há ragdoll — o
 corpo morto usa a animação e escolhe o lado livre; se não houver nenhum lado livre (canto
 apertado), partes do corpo podem encostar nas paredes.
+
+
+## 6. v1.5 — braço dentro do corpo (relato do usuário)
+Causa: para deixar o pulso reto, o cotovelo era posto na linha da mão, sem conferir se
+esse ponto ficava dentro do tronco; e, com a arma baixa, o tronco saía da postura de fuzil
+(o ombro direito vinha 27 cm para a frente) enquanto a arma continuava calculada para ela.
+Correção: contorno real do tronco medido da malha + escolha do cotovelo fora dele; postura
+de fuzil mantida com arma longa; coronha na concha do ombro achada na malha.
+Medido (todas as armas, mirando e em prontidão): braços do lado de fora do tronco, arma só
+encostando pela coronha, pulsos ≤ 35°. Também: toldo da banca com colisão grossa (chapa
+fina deixava atravessar) e salto por cima de obstáculos conferindo o arco inteiro (não
+entra em toldo/viga acima do obstáculo). Na pistola, a parte de cima do braço esquerdo encosta
+no peitoral junto da axila (a pele dos dois se encontra; não atravessa o peito).

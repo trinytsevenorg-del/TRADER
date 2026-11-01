@@ -17,7 +17,17 @@ func _construir() -> void:
 			var alt := 2.6 if sz < 0 else 2.2
 			caixa(Vector3(sx * largura * 0.48, alt * 0.5, sz * profundidade * 0.48), Vector3(0.07, alt, 0.07), poste, false, Vector3.ZERO, true)
 	var ang := rad_to_deg(atan2(0.4, profundidade))
-	caixa(Vector3(0, 2.45, 0), Vector3(largura + 0.3, 0.06, profundidade + 0.4), MateriaisMapa.obter("toldo", cor_toldo), true, Vector3(-ang, 0, 0))
+	caixa(Vector3(0, 2.45, 0), Vector3(largura + 0.3, 0.06, profundidade + 0.4), MateriaisMapa.obter("toldo", cor_toldo), false, Vector3(-ang, 0, 0))
+	# Colisão do toldo mais GROSSA para baixo (chapa de 6 cm deixa o corpo atravessar ou
+	# prender na física); a superfície de cima continua no mesmo lugar.
+	var giro := Basis(Vector3.RIGHT, deg_to_rad(-ang))
+	var espessura := 0.3
+	var cs := CollisionShape3D.new()
+	var forma := BoxShape3D.new()
+	forma.size = Vector3(largura + 0.3, espessura, profundidade + 0.4)
+	cs.shape = forma
+	cs.transform = Transform3D(giro, Vector3(0, 2.45, 0) - giro.y * (espessura - 0.06) * 0.5)
+	_corpo.add_child(cs)
 	# Mercadoria (detalhe)
 	var cores := [Color(0.9, 0.5, 0.1), Color(0.3, 0.6, 0.2), Color(0.8, 0.2, 0.2)]
 	for i in 3:

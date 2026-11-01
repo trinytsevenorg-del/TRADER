@@ -597,6 +597,18 @@ Resumo:
   volta, encaixa (com um tapa) e retorna ao guarda-mão; a arma gira um pouco no meio da
   recarga. Dura exatamente o `tempo_recarga` da arma.
 
+### Braços fora do corpo e postura de fuzil (v1.5)
+- **Braço nunca entra no tronco**: o contorno real do tronco é medido da malha (a pele em
+  fatias de 4 cm e 24 direções em volta da coluna) e a espessura do braço também. O IK
+  testa todas as posições possíveis do cotovelo e escolhe a de pulso mais reto entre as
+  que deixam o braço inteiro do lado de fora.
+- **Postura de fuzil sempre** com arma longa (corpo de lado, coronha no ombro), também com
+  a arma baixa — antes, na prontidão, o tronco "destorcia" e a arma/braço entravam no peito.
+- **Coronha na concha do ombro**, achada na própria malha (encosta na pele, não entra nem
+  sai pelas costas); a arma baixa gira em volta desse ponto e vai um pouco para a frente.
+- Medido em todas as armas: arma encostando no corpo só na coronha (≤ 5 cm, a própria
+  coronha apoiada), braços do lado de fora, pulso direito ≤ 35° e esquerdo ≤ 28°.
+
 ### Pente fino: anatomia, colisão e fluidez (v1.4)
 Teste novo no mapa real: `godot --headless --path jogo res://tests/teste_auto_colisao.tscn`
 (60 s, 4 bots difíceis + o jogador fazendo parkour sozinho; mede a cada quadro a cápsula
