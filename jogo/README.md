@@ -63,8 +63,8 @@ arquivos e permita "instalar apps desconhecidos" para esse app quando o Android 
 | 1 | Personagem, câmera e controles | **pronta** |
 | 2 | Parkour e rolamento | **pronta** |
 | 3 | Armas e tiro | **pronta** |
-| 4 | Mapa urbano | próxima |
-| 5 | Bots e mata-mata | |
+| 4 | Mapa urbano | **pronta** |
+| 5 | Bots e mata-mata | próxima |
 | 6 | Modelos 3D e animações | |
 | 7 | Personagens, skins, roleta, caixas, progressão | |
 | 8 | Multiplayer com um amigo (Wi-Fi) | |
@@ -258,6 +258,82 @@ A arma é presa no osso da mão e alinhada automaticamente pela pose de mira.
 Teste automático: `godot --headless --path jogo res://tests/teste_auto_etapa3.tscn` (20 verificações).
 
 Sem sons ainda: os efeitos sonoros entram junto com o mapa (etapa 4) ou o polimento.
+
+---
+
+## Etapa 4: mapa "Vila Telhado"
+
+Agora o jogo abre direto no mapa (`scenes/mapas/vila_telhado.tscn`). A pista de testes
+continua em `scenes/test/teste_etapa1.tscn`.
+
+### Layout (60 × 60 m, para até 5 jogadores)
+
+```
+            viela de trás (liga os becos)
+   ┌────────────┐ beco ┌────────┐ beco ┌────────────┐
+   │ Prédio NO  │  4m  │N-meio  │  4m  │ Prédio NE  │   fileira norte
+   │   6 m      │      │ 3,5 m  │      │   6,5 m    │
+   └─────┬──────┘      └──┬─────┘      └─────┬──────┘
+ passarela│        rua norte (escada)   passarela│
+   ┌──────┴─┐    ┌───────────────────┐  ┌───────┴────┐
+   │Prédio O│    │  PRAÇA (mosaico)  │  │ pátio de   │
+   │ 4,5 m  │    │ fonte · quiosque  │  │ containers │
+   │(escada)│    │ bancas · canteiros│  │ até 5,2 m  │
+   └──────┬─┘    └───────────────────┘  └───────┬────┘
+ passarela│          rua sul           passarela│
+   ┌──────┴─────┐      ┌────────┐      ┌───────┴────┐
+   │ Prédio SO  │─pas.─│ S-meio │─pas.─│ Prédio SE  │   fileira sul
+   │   5 m      │      │  7 m   │      │   6 m      │
+   └────────────┘      └────────┘      └────────────┘
+            viela de trás (liga os becos)
+```
+
+- **3 níveis de altura**: chão, telhados baixos (3,5 a 5,2 m) e altos (6 a 7 m).
+- **Rotas variadas e sem becos sem saída**: os becos ligam a rua à viela de trás; cada telhado
+  tem pelo menos 2 saídas (escada, passarela, caixote ou pular/escalar para o vizinho).
+- **Parkour**: becos de 4 m (correr na parede de um lado e pular para o outro), caixotes para
+  subir, containers em "escadinha" (caixote → 2,6 m → 5,2 m → passarela → telhado), toldos
+  das bancas e o telhado do quiosque também dão para subir.
+- **Cobertura**: fonte, canteiros, muretas, bancas, caixotes, caixas d'água e aparelhos de
+  ar-condicionado nos telhados.
+- **10 pontos de renascimento** espalhados (8 no chão em vielas e esquinas protegidas, 2 em
+  telhados), todos a mais de 9 m uns dos outros. O jogo escolhe o mais longe dos inimigos.
+- **Limites**: paredes invisíveis na borda; quem cair para fora renasce.
+
+### Peças (cada uma em uma cena separada)
+
+`scenes/mapa/pecas/`: `predio`, `container`, `caixa_madeira`, `muro`, `bloco`, `escada`,
+`passarela`, `banca`, `fonte`, `canteiro`, `quiosque`. Cada peça gera sua geometria pelos
+parâmetros (tamanho, cor...) e **aparece pronta no editor**. Para editar o mapa, abra
+`vila_telhado.tscn`, selecione uma peça em *Pecas* e mova/mude os números no Inspetor.
+
+Trocar uma peça por um modelo `.glb`: desmarque **gerar** na peça, arraste o `.glb` para
+dentro dela e adicione as colisões (StaticBody3D, camada 1).
+
+`tools/gerar_mapa.py` gerou o layout inicial. Não rode de novo depois de editar no editor,
+porque ele sobrescreve. `tools/gerar_texturas_mapa.py` gera as 7 texturas
+(`assets/map/texturas/`).
+
+### Desempenho (para rodar a 60 FPS no celular)
+- **Mesclagem de malhas** ao carregar: cerca de 2.900 pecinhas viram cerca de 90 malhas
+  (agrupadas por textura e por região de 32 m; a cor de cada peça vai para a cor do vértice).
+  Na visão do jogador ficam entre 170 e 240 draw calls, contando sombras e personagens.
+- Uma leitura de textura por pixel (o UV é calculado na mesclagem) e sombra de contato no pé
+  das paredes "pintada" nos vértices (dá profundidade sem custo de luz).
+- Objetos pequenos (ar-condicionado, arbustos, mercadorias) somem a mais de 40 m e não
+  projetam sombra.
+- Texturas de 256 px, sombras só até 40 m, sem luzes dinâmicas extras.
+- O carregamento + mesclagem leva cerca de 1 s no PC (no celular deve levar 2 a 3 s).
+
+### O que testar
+- [ ] Ande pelo mapa todo: tente achar um lugar onde fique preso ou que não tenha saída.
+- [ ] Suba em todos os telhados (escadas, caixotes, containers, passarelas).
+- [ ] Corra na parede nos becos entre os prédios.
+- [ ] Veja o FPS no canto, principalmente olhando para a praça de cima de um telhado.
+- [ ] Caia de propósito para fora (pelas bordas não dá; o limite segura).
+
+Teste automático: `godot --headless --path jogo res://tests/teste_auto_etapa4.tscn`
+(renascimentos, limites, queda, escadas, passarelas e a rota caixote → containers).
 
 ### Ajustar a "sensação" do movimento
 
