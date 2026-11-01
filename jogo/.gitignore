@@ -1,0 +1,10 @@
+# Pasta de cache/importação da Godot (é recriada sozinha)
+.godot/
+*.import.tmp
+# Builds exportados
+export/
+*.apk
+*.aab
+# Chave de assinatura: NUNCA suba para o git
+*.keystore
+export_credentials.cfg

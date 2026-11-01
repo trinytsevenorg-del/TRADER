@@ -1,0 +1,49 @@
+; Arquivo de configuração do projeto Godot 4 (não edite à mão se não precisar;
+; a maioria dessas opções aparece em Projeto > Configurações do Projeto).
+
+config_version=5
+
+[application]
+
+config/name="Projeto Telhado"
+config/description="TPS com parkour para celular (projeto pessoal)."
+run/main_scene="res://scenes/test/teste_etapa1.tscn"
+config/features=PackedStringArray("4.3", "GL Compatibility")
+
+[autoload]
+
+Config="*res://scripts/autoload/config.gd"
+Controles="*res://scripts/autoload/controles.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=4
+window/vsync/vsync_mode=1
+
+[input_devices]
+
+pointing/emulate_mouse_from_touch=true
+
+[layer_names]
+
+3d_physics/layer_1="mundo"
+3d_physics/layer_2="personagens"
+3d_physics/layer_3="hitbox"
+
+[physics]
+
+common/physics_ticks_per_second=60
+common/max_physics_steps_per_frame=4
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
+lights_and_shadows/directional_shadow/size=2048
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality=1
+anti_aliasing/quality/msaa_3d=0
