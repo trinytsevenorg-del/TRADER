@@ -64,8 +64,8 @@ arquivos e permita "instalar apps desconhecidos" para esse app quando o Android 
 | 2 | Parkour e rolamento | **pronta** |
 | 3 | Armas e tiro | **pronta** |
 | 4 | Mapa urbano | **pronta** |
-| 5 | Bots e mata-mata | próxima |
-| 6 | Modelos 3D e animações | |
+| 5 | Bots e mata-mata | **pronta** |
+| 6 | Modelos 3D e animações | **pronta** |
 | 7 | Personagens, skins, roleta, caixas, progressão | |
 | 8 | Multiplayer com um amigo (Wi-Fi) | |
 | 9 | Exportar APK | |
@@ -334,6 +334,114 @@ porque ele sobrescreve. `tools/gerar_texturas_mapa.py` gera as 7 texturas
 
 Teste automático: `godot --headless --path jogo res://tests/teste_auto_etapa4.tscn`
 (renascimentos, limites, queda, escadas, passarelas e a rota caixote → containers).
+
+---
+
+## Etapa 5: bots e mata-mata
+
+A partida (`scenes/partida.tscn`) monta o mapa, você, os bots e o HUD.
+
+### Bots (`ai/cerebro_bot.gd`)
+Os bots usam **exatamente** o mesmo personagem e as mesmas armas que você; a IA só
+"aperta os botões". Comportamento:
+- **Patrulha** pelo mapa usando a malha de navegação (gerada ao carregar, ~40 ms).
+- **Combate**: mira com erro e tempo de reação, atira em toques/rajadas, anda de lado,
+  mantém a distância boa para a arma e faz parkour (pula, rola, desliza).
+- **Cobertura**: com pouca vida vai para um ponto fora da visão do inimigo, recarrega e
+  espera a vida regenerar.
+- **Busca**: vai até onde viu/ouviu o inimigo pela última vez (ouvem tiros a ~28 m).
+- **Destravar**: se ficarem presos, pulam (e agarram beiradas) ou mudam de destino.
+
+| Dificuldade | Reação | Erro de mira | Parkour | Cobertura |
+|---|---|---|---|---|
+| Fácil | 0,9 s | 7° | quase nada | não |
+| Médio | 0,55 s | 4,2° | às vezes | abaixo de 40 de vida |
+| Difícil | 0,32 s | 2,6° | bastante | abaixo de 55 de vida |
+
+Todos os números ficam em `PERFIS`, no começo do script. Medido em simulação: o líder
+chega a 20 abates em ~5 min (fácil), ~6 min (médio) e ~4 min (difícil).
+
+### Mata-mata (`scripts/modos/modo_mata_mata.gd`)
+- Vence quem fizer **20 abates** primeiro, ou quem tiver mais quando os **8 minutos** acabarem.
+- 5 participantes (você + 4 bots); renasce em 3 s no ponto mais longe dos inimigos, com 1,5 s
+  de proteção. Vida regenera após 4 s sem tomar dano.
+- HUD: tempo, placar (você × líder), feed de abates (✦ = na cabeça), barra de vida,
+  indicador de direção do dano, borda vermelha com pouca vida, tela de "ELIMINADO",
+  **PLACAR** (botão ou Tab) e tela de fim com recompensas.
+
+Teste automático: `godot --headless --path jogo res://tests/teste_auto_etapa5.tscn`.
+
+---
+
+## Etapa 6: modelos 3D e animações
+
+### O que já está no jogo (tudo CC0, baixado e ligado)
+| O quê | Arquivo | Origem |
+|---|---|---|
+| Personagem masculino e feminino | `assets/characters/humano_*/` | Universal Base Characters (Quaternius) |
+| 43 + 43 animações | `assets/animations/animacoes_humanas*.glb` | Universal Animation Library 1 e 2 (Quaternius) |
+| 12 armas | `assets/weapons/<arma>.fbx` | Ultimate Gun Pack (Quaternius) |
+| Cabelos/barba | `assets/characters/humano_*/` | Universal Base Characters |
+
+### AnimationTree (`characters/humano/modelo_humano.gd`)
+```
+locomoção (Transition): parado · parado_arma · andar · trote · correr · pulo · parede ·
+                         subindo_parede · escalar · rolar · deslizar · morrer
+      └─ velocidade (TimeScale)
+mira (BlendSpace1D: baixo / reto / cima) ──┐
+                     Blend2 só no tronco ──┴─> OneShot "tiro" ─> OneShot "recarga" ─> saída
+```
+As pernas fazem a locomoção e o tronco mira, atira e recarrega por cima (dá para recarregar
+correndo). A tabela `ANIM` no topo do script diz qual animação cada estado usa: para trocar
+uma animação, mude só o nome ali.
+
+### Armas: pontos de encaixe
+Cada `weapons/modelos/<arma>.tscn` tem `Modelo` (o .fbx), e os marcadores **Mao**,
+**Cano** e **Mira**. A arma é presa no osso da mão direita e alinhada automaticamente pela
+pose de mira (funciona com qualquer modelo com o mesmo esqueleto). Skins de arma trocam
+só o material.
+
+### Baixar animações do Mixamo (opcional, para trocar as provisórias)
+O pacote CC0 já cobre quase tudo. Faltam animações próprias para **correr na parede**
+(hoje usa a corrida inclinada) e de **fuzil** (hoje a pose de mira é de pistola).
+O Mixamo (mixamo.com) é gratuito, mas exige login com conta Adobe.
+
+1. Entre em mixamo.com, aba **Animations**. Busque e baixe (os nomes exatos variam;
+   use a busca):
+   - "wall run" (correr na parede)
+   - "rifle aiming idle", "rifle run", "firing rifle", "rifle reload" (pose de fuzil)
+   - opcionais: "running slide", "sprinting forward roll", "climbing", "rifle death"
+2. Configuração de download de cada uma: **Format: FBX Binary (.fbx)** · **Skin: Without
+   Skin** · **Frames per Second: 30** · **Keyframe Reduction: none** · nas de locomoção
+   marque **In Place**.
+3. Coloque os arquivos em `jogo/assets/animations/mixamo/`.
+4. Na Godot, para cada .fbx do Mixamo e também para `humano_masculino.gltf`,
+   `humano_feminino.gltf`, `animacoes_humanas.glb` e `animacoes_humanas_2.glb`: clique no
+   arquivo > aba **Importar** > **Avançado...** > selecione o **Skeleton3D** > em
+   *Retarget* crie um **BoneMap** com **SkeletonProfileHumanoid** (os ossos são ligados
+   sozinhos; confira se não ficou nenhum vermelho) > **Reimportar**. Isso deixa todos
+   com os mesmos nomes de ossos, e as animações de um servem no outro. O código já aceita
+   os dois padrões de nomes.
+5. Adicione o caminho do .fbx em `CAMINHOS_ANIMACOES` e troque o nome em `ANIM`
+   (ex.: `"parede": "WallRun"`).
+
+### Importar um modelo novo (passo a passo)
+**Personagem** (`.glb` com esqueleto humanoide):
+1. Coloque em `assets/characters/<nome>/`.
+2. Duplique `characters/humano/humano_masculino.tscn` e, no Inspetor, troque `cena_modelo`
+   para o novo arquivo (e as texturas de skin, se houver).
+3. Adicione o caminho da cena em `MODELOS` (topo de `scripts/jogador/jogador.gd`).
+4. Mesmo esqueleto dos atuais (estilo UE: pelvis, spine_01, hand_r...) = funciona direto.
+   Outro esqueleto (Mixamo etc.) = faça o passo 4 da seção do Mixamo.
+
+**Arma** (`.fbx` ou `.glb`):
+1. Coloque em `assets/weapons/<id_da_arma>.fbx`, com o cano para +X, o topo para +Y e a
+   origem perto do gatilho (padrão da maioria dos pacotes).
+2. Rode `godot --headless --path jogo -s res://tools/montar_armas.gd`: ele escala, gira e
+   acha Mao/Cano/Mira sozinho. Ou faça à mão: abra `weapons/modelos/<id>.tscn`, troque o
+   nó `Modelo` e mova os 3 marcadores.
+
+**Peça de mapa**: veja a etapa 4 (desmarque `gerar`, arraste o `.glb` e adicione a colisão).
 
 ### Ajustar a "sensação" do movimento
 

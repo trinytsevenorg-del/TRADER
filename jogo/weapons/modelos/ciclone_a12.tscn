@@ -1,28 +1,18 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://scripts/armas/arma.gd" id="1"]
-[ext_resource type="Script" path="res://weapons/modelos/arma_provisoria.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/armas/arma.gd" id="1_lsb3j"]
+[ext_resource type="PackedScene" path="res://assets/weapons/ciclone_a12.fbx" id="2_wjfu3"]
 
 [node name="CicloneA12" type="Node3D"]
-script = ExtResource("1")
+script = ExtResource("1_lsb3j")
 
-[node name="Modelo" type="Node3D" parent="."]
-script = ExtResource("2")
-comprimento_corpo = 0.45
-altura_corpo = 0.13
-largura = 0.07
-comprimento_cano = 0.25
-diametro_cano = 0.05
-tamanho_pente = 0.16
-comprimento_coronha = 0.2
-tambor = true
-cor = Color(0.22, 0.24, 0.22, 1)
-cor_detalhe = Color(0.1, 0.1, 0.1, 1)
+[node name="Modelo" type="Node3D" parent="." instance=ExtResource("2_wjfu3")]
+transform = Transform3D(-8.01637e-09, 0, 0.183393, 0, 0.183393, 0, -0.183393, 0, -8.01637e-09, -1.59224e-09, 0.0221527, -0.0364261)
 
 [node name="Mao" type="Marker3D" parent="."]
 
 [node name="Cano" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.091, -0.575)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.000201178, 0.0896411, -0.780318)
 
 [node name="Mira" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.16, -0.113)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.86747e-09, 0.121184, -0.0656)

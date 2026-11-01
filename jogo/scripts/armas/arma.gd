@@ -16,11 +16,15 @@ class_name ModeloArma
 @onready var mira: Marker3D = $Mira
 
 var _clarao: MeshInstance3D
+var _base_modelo := Transform3D.IDENTITY
 var _tempo_clarao := 0.0
 var _coice := 0.0
 
 
 func _ready() -> void:
+	var modelo := get_node_or_null("Modelo") as Node3D
+	if modelo:
+		_base_modelo = modelo.transform
 	# Clarão do disparo: um losango emissivo (sem luz dinâmica = barato no celular).
 	_clarao = MeshInstance3D.new()
 	var malha := PrismMesh.new()
@@ -48,8 +52,8 @@ func _process(delta: float) -> void:
 		_coice = move_toward(_coice, 0.0, delta * 1.2)
 		var modelo := get_node_or_null("Modelo") as Node3D
 		if modelo:
-			modelo.position.z = _coice * 0.6
-			modelo.rotation.x = _coice * 1.5
+			# recua e levanta o cano um pouco (no espaço da arma)
+			modelo.transform = Transform3D(Basis(Vector3.RIGHT, _coice * 1.5), Vector3(0, 0, _coice * 0.6)) * _base_modelo
 
 
 func disparou(forca: float = 0.08) -> void:

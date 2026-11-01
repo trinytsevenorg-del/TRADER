@@ -166,6 +166,13 @@ func _ready() -> void:
 	_colisao.shape = _colisao.shape.duplicate()
 	controlado_localmente = tipo == Tipo.LOCAL
 	saude.morreu.connect(_ao_morrer)
+	# Animações de tiro e recarga no tronco
+	armas.disparou.connect(func(d: DadosArma):
+		if modelo and modelo.has_method("tocar_tiro") and d.intervalo() > 0.2:
+			modelo.tocar_tiro())
+	armas.recarga_iniciada.connect(func(t: float):
+		if modelo and modelo.has_method("tocar_recarga"):
+			modelo.tocar_recarga(t))
 	if not controlado_localmente:
 		# Sem câmera própria (economiza os raios das SpringArms).
 		camera_rig.process_mode = Node.PROCESS_MODE_DISABLED
@@ -203,6 +210,13 @@ func yaw_visao() -> float:
 
 func pitch_visao() -> float:
 	return camera_rig.pitch if controlado_localmente else pitch_mira
+
+
+## Inclinação do CORPO ao mirar: dos olhos do personagem até o ponto que a mira
+## da tela acerta (a câmera fica acima do ombro, então não dá para copiar o pitch dela).
+var _pitch_corpo := 0.0
+func pitch_corpo() -> float:
+	return _pitch_corpo if controlado_localmente else pitch_mira
 
 
 ## Ponto e direção dos olhos (usado pelas armas dos bots e pela IA).
@@ -774,7 +788,12 @@ func _atualizar_estado() -> void:
 	if modelo and modelo.has_method("definir_mira"):
 		# Tronco mira junto com a câmera (menos no rolamento e na escalada).
 		var pode := modo != Modo.ROLANDO and modo != Modo.ESCALANDO
-		var pitch_norm := pitch_visao() / deg_to_rad(60.0)
+		if controlado_localmente and mirando:
+			var alvo := camera_rig.ponto_mirado(80.0, 1)
+			var olhos := global_position + Vector3.UP * 1.45
+			var d := alvo - olhos
+			_pitch_corpo = atan2(d.y, Vector2(d.x, d.z).length())
+		var pitch_norm := pitch_corpo() / deg_to_rad(60.0)
 		modelo.definir_mira(1.0 if (mirando and pode) else 0.0, pitch_norm)
 
 

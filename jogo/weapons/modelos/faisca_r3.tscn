@@ -1,27 +1,18 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://scripts/armas/arma.gd" id="1"]
-[ext_resource type="Script" path="res://weapons/modelos/arma_provisoria.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/armas/arma.gd" id="1_yiss4"]
+[ext_resource type="PackedScene" path="res://assets/weapons/faisca_r3.fbx" id="2_u3b0r"]
 
-[node name="FaíscaR3" type="Node3D"]
-script = ExtResource("1")
+[node name="FaiscaR3" type="Node3D"]
+script = ExtResource("1_yiss4")
 
-[node name="Modelo" type="Node3D" parent="."]
-script = ExtResource("2")
-comprimento_corpo = 0.3
-altura_corpo = 0.1
-largura = 0.055
-comprimento_cano = 0.1
-diametro_cano = 0.03
-tamanho_pente = 0.18
-comprimento_coronha = 0.15
-cor = Color(0.3, 0.32, 0.2, 1)
-cor_detalhe = Color(0.15, 0.15, 0.15, 1)
+[node name="Modelo" type="Node3D" parent="." instance=ExtResource("2_u3b0r")]
+transform = Transform3D(-9.16408e-09, 0, 0.20965, 0, 0.20965, 0, -0.20965, 0, -9.16408e-09, -1.46341e-09, 0.0200342, -0.033479)
 
 [node name="Mao" type="Marker3D" parent="."]
 
 [node name="Cano" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.07, -0.32)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.000349905, 0.155245, -0.444128)
 
 [node name="Mira" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.13, -0.075)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.16808e-09, 0.239599, -0.0496)

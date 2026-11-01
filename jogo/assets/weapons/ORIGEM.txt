@@ -1,0 +1,13 @@
+Modelos: Ultimate Gun Pack (Quaternius, quaternius.com) - licença CC0 1.0.
+vespa_p9.fbx = Pistol_2.fbx
+rinoceronte_50.fbx = Revolver_3.fbx
+zumbido_mk2.fbx = SubmachineGun_1.fbx
+faisca_r3.fbx = AssaultRifle2_4.fbx
+corisco_ar.fbx = AssaultRifle_5.fbx
+falcao_br.fbx = Bullpup_2.fbx
+patrulha_dmr.fbx = AssaultRifle2_2.fbx
+trovao_12.fbx = Shotgun_3.fbx
+ciclone_a12.fbx = Shotgun_ShortStock.fbx
+bigorna_lmg.fbx = Bullpup_1.fbx
+agulha_sr.fbx = SniperRifle_6.fbx
+coruja_sx.fbx = SniperRifle_4.fbx

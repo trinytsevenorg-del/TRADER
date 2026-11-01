@@ -131,7 +131,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, {cano[0]}, {cano[1]}, {cano[2
 [node name="Mira" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, {mira[0]}, {mira[1]}, {mira[2]})
 '''
-    open(os.path.join(RAIZ, "weapons", "modelos", aid + ".tscn"), "w").write(tscn)
+    caminho_modelo = os.path.join(RAIZ, "weapons", "modelos", aid + ".tscn")
+    # Não sobrescreve modelos de verdade (montados por tools/montar_armas.gd)
+    if not os.path.exists(caminho_modelo):
+        open(caminho_modelo, "w").write(tscn)
     # ---- dados (.tres)
     linhas = "\n".join("%s = %s" % (k, valor(v)) for k, v in a.items())
     tres = f'''[gd_resource type="Resource" script_class="DadosArma" load_steps=3 format=3]

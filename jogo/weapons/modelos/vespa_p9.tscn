@@ -1,27 +1,18 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://scripts/armas/arma.gd" id="1"]
-[ext_resource type="Script" path="res://weapons/modelos/arma_provisoria.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/armas/arma.gd" id="1_geun2"]
+[ext_resource type="PackedScene" path="res://assets/weapons/vespa_p9.fbx" id="2_3wn3c"]
 
 [node name="VespaP9" type="Node3D"]
-script = ExtResource("1")
+script = ExtResource("1_geun2")
 
-[node name="Modelo" type="Node3D" parent="."]
-script = ExtResource("2")
-comprimento_corpo = 0.2
-altura_corpo = 0.07
-largura = 0.04
-comprimento_cano = 0.04
-diametro_cano = 0.02
-tamanho_pente = 0.0
-comprimento_coronha = 0.0
-cor = Color(0.15, 0.15, 0.17, 1)
-cor_detalhe = Color(0.25, 0.25, 0.27, 1)
+[node name="Modelo" type="Node3D" parent="." instance=ExtResource("2_3wn3c")]
+transform = Transform3D(-5.28553e-09, 0, 0.120919, 0, 0.120919, 0, -0.120919, 0, -5.28553e-09, -1.63985e-10, 0.0140531, -0.00375155)
 
 [node name="Mao" type="Marker3D" parent="."]
 
 [node name="Cano" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.049, -0.19)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.000178961, 0.0834423, -0.189988)
 
 [node name="Mira" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, -0.05)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.6932e-10, 0.104632, -0.0176)
