@@ -23,7 +23,8 @@ SKINS = {
     "tatico":  dict(camisa=(78, 92, 60),   calca=(52, 50, 44),  botas=(32, 28, 24), luvas=(30, 30, 30), cinto=(25, 22, 20)),
     "urbano":  dict(camisa=(170, 40, 38),  calca=(48, 66, 110), botas=(235, 235, 230), luvas=(40, 40, 40), cinto=(30, 30, 30)),
     "noturno": dict(camisa=(30, 32, 38),   calca=(24, 25, 30),  botas=(18, 18, 20), luvas=(18, 18, 20), cinto=(60, 140, 200)),
-    "deserto": dict(camisa=(190, 160, 115), calca=(140, 115, 80), botas=(90, 65, 45), luvas=(110, 85, 60), cinto=(70, 50, 35)),
+    # tons de cáqui/marrom bem diferentes da pele (o bege claro parecia "sem roupa")
+    "deserto": dict(camisa=(128, 108, 64), calca=(82, 66, 44), botas=(52, 38, 26), luvas=(60, 46, 32), cinto=(40, 30, 22)),
 }
 
 PERSONAGENS = {

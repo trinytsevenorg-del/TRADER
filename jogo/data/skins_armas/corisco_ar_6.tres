@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="DadosSkinArma" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/skins/dados_skin_arma.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "corisco_ar_6"
+nome = "Futurista"
+arma = "corisco_ar"
+raridade = "lendaria"
+padrao = 5
+cor_a = Color(0.855, 0.875, 0.905, 1)
+cor_b = Color(0.1, 0.85, 1.0, 1)
+metalico = 0.4
+rugosidade = 0.3
+emissao = 1.4
+cor_detalhe = Color(0.08, 0.08, 0.1, 1)
+metalico_detalhe = 0.5

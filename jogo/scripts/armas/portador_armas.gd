@@ -136,17 +136,23 @@ func _aplicar_skin(d: DadosArma) -> void:
 	if dono.controlado_localmente:
 		s = Progresso.skin_equipada(d.id)
 	elif dono.tipo == Jogador.Tipo.BOT:
-		var opcoes := CatalogoSkins.da_arma(d.id)
-		if not opcoes.is_empty() and randf() < 0.6:
-			s = opcoes[randi() % opcoes.size()]
+		if skin_bot_fixa.has(d.id):
+			s = CatalogoSkins.carregar(skin_bot_fixa[d.id])  # combinada pela rede
+		elif not skin_bot_fixa.is_empty():
+			s = null
+		else:
+			var opcoes := CatalogoSkins.da_arma(d.id)
+			if not opcoes.is_empty() and randf() < 0.6:
+				s = opcoes[randi() % opcoes.size()]
 	else:
 		s = CatalogoSkins.carregar(skin_remota.get(d.id, ""))
-	if s:
-		modelo_arma.aplicar_material(CatalogoSkins.material(s))
+	modelo_arma.aplicar_skin(s)
 
 
 ## Skins dos jogadores remotos (preenchido pela rede na etapa 8).
 var skin_remota := {}
+## Skins dos bots combinadas pelo host (para todos verem as mesmas).
+var skin_bot_fixa := {}
 
 
 # =========================================================================

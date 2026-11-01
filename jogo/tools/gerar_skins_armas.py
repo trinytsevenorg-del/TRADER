@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Gera as skins de arma em data/skins_armas/<arma>_<n>.tres (4 por arma = 48 skins).
+Gera as skins de arma em data/skins_armas/<arma>_<n>.tres (6 por arma = 72 skins):
+4 variadas por arma + "Dourada" (épica) + "Futurista" (lendária) em todas.
 Depois disso, edite no Inspetor da Godot (rodar de novo sobrescreve).
 Padrões: 0 liso, 1 listras, 2 camuflagem, 3 digital, 4 gradiente, 5 brilho
 """
@@ -29,9 +30,14 @@ def cor(c):
     return "Color(%s, %s, %s, 1)" % c
 
 
+EXTRAS = [("Dourada", "epica", 0, (0.95, 0.72, 0.25), (0.6, 0.42, 0.1), 0.9, 0.25, 0),
+          ("Futurista", "lendaria", 5, (0.9, 0.92, 0.95), (0.1, 0.85, 1.0), 0.4, 0.3, 1.4)]
+DETALHE = {"Dourada": (0.35, 0.25, 0.08), "Futurista": (0.08, 0.08, 0.1), "Lava": (0.05, 0.03, 0.02),
+           "Neon": (0.05, 0.05, 0.08), "Aurora": (0.06, 0.07, 0.12), "Ouro Velho": (0.2, 0.14, 0.06)}
+
 n = 0
 for i, arma in enumerate(ARMAS):
-    conj = MODELOS[i % len(MODELOS)]
+    conj = MODELOS[i % len(MODELOS)] + EXTRAS
     for k, (nome, rar, pad, a, b, met, rug, emi) in enumerate(conj):
         sid = "%s_%d" % (arma, k + 1)
         # Variação por arma para não ficarem todas idênticas
@@ -53,6 +59,8 @@ cor_b = {cor(b)}
 metalico = {met}
 rugosidade = {rug}
 emissao = {float(emi)}
+cor_detalhe = {cor(DETALHE.get(nome, (0.13, 0.13, 0.14)))}
+metalico_detalhe = {0.8 if nome in ("Dourada", "Ouro Velho") else 0.5}
 '''
         open(os.path.join(RAIZ, "data", "skins_armas", sid + ".tres"), "w").write(txt)
         n += 1

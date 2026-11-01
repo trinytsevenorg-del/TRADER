@@ -235,8 +235,14 @@ func iniciar_partida_host(dificuldade: int) -> void:
 	livres.shuffle()
 	for i in max(0, Sessao.total_participantes - jogadores.size()):
 		var opcoes: Array = CatalogoArmas.PRINCIPAIS.duplicate()
+		var armas_bot := [opcoes[randi() % opcoes.size()], CatalogoArmas.SECUNDARIAS[randi() % 2]]
+		var skins_bot := {}
+		for a in armas_bot:
+			var lista := CatalogoSkins.da_arma(a)
+			if not lista.is_empty() and randf() < 0.6:
+				skins_bot[a] = lista[randi() % lista.size()].id
 		bots_info.append({"nome": livres[i], "personagem": randi() % 2, "skin": randi() % 8,
-			"armas": [opcoes[randi() % opcoes.size()], CatalogoArmas.SECUNDARIAS[randi() % 2]]})
+			"armas": armas_bot, "skins": skins_bot})
 	_comecar.rpc(jogadores, bots_info, dificuldade)
 	_comecar(jogadores, bots_info, dificuldade)
 
@@ -297,6 +303,7 @@ func iniciar_partida_em_rede(p: Partida) -> void:
 			bot.skin_inicial = b.skin
 			bot.add_child(_novo_sincronizador())
 			p.add_child(bot)
+			bot.armas.skin_remota = b.get("skins", {})
 			bot.armas.equipar_armas(b.armas)
 			modo.adicionar(bot, b.nome, true)
 		nos[String(bot.name)] = bot
@@ -306,6 +313,9 @@ func iniciar_partida_em_rede(p: Partida) -> void:
 		j.armas.tiro_visual.connect(func(de: Vector3, ate: Vector3):
 			if j.tipo != Jogador.Tipo.REMOTO:
 				_efeito_tiro.rpc(j.name, de, ate))
+		j.armas.recarga_iniciada.connect(func(tempo: float):
+			if j.tipo != Jogador.Tipo.REMOTO:
+				_recarga_rede.rpc(j.name, tempo))
 		if eh_host():
 			j.saude.dano_recebido.connect(func(qtd, atacante, ponto, cabeca):
 				_vida_rede.rpc(j.name, j.saude.vida, qtd, atacante.name if atacante is Node else "", ponto, cabeca))
@@ -374,6 +384,8 @@ func _estado(nome: String, t: float, pos: Vector3, vel: Vector3, yaw: float, pit
 	if arma != j.armas.atual and arma < j.armas.slots.size():
 		j.armas.atual = arma
 		j.armas.reprender_modelo()
+		if j.modelo and j.modelo.has_method("animar_troca"):
+			j.modelo.animar_troca(j.armas.arma().tempo_equipar)
 
 
 @rpc("any_peer", "unreliable")
@@ -387,6 +399,16 @@ func _efeito_tiro(nome: String, de: Vector3, ate: Vector3) -> void:
 	if j.armas.modelo_arma:
 		j.armas.modelo_arma.disparou()
 	j.armas.tempo_desde_tiro = 0.0  # bots "ouvem" o tiro
+
+
+@rpc("any_peer", "reliable")
+func _recarga_rede(nome: String, tempo: float) -> void:
+	var j: Jogador = nos.get(nome)
+	if j == null or not is_instance_valid(j):
+		return
+	if j.modelo and j.modelo.has_method("tocar_recarga"):
+		j.modelo.tocar_recarga(tempo)
+	Efeitos.som_3d("recarga", j.global_position + Vector3.UP * 1.2, -7.0)
 
 
 ## Cliente acertou alguém: pede ao host para aplicar o dano.

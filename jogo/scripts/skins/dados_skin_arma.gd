@@ -18,6 +18,19 @@ enum Padrao { LISO, LISTRAS, CAMUFLAGEM, DIGITAL, GRADIENTE, BRILHO }
 ## Brilho próprio (lendárias): cor_b brilha.
 @export var emissao := 0.0
 
+@export_group("Detalhes (partes de metal)")
+## Cor e acabamento das partes secundárias (metal, ferragens, cano).
+@export var cor_detalhe := Color(0.14, 0.14, 0.15)
+@export_range(0.0, 1.0) var metalico_detalhe := 0.5
+@export_range(0.0, 1.0) var rugosidade_detalhe := 0.4
+
+@export_group("Personalizado (opcional)")
+## Textura própria do corpo (ex.: pintura feita no Krita/Photoshop). Substitui o padrão.
+@export var textura_albedo: Texture2D
+## Materiais próprios completos (ex.: um ShaderMaterial). Substituem tudo acima.
+@export var material_principal: Material
+@export var material_secundario: Material
+
 
 static func cor_raridade(r: String) -> Color:
 	match r:

@@ -66,7 +66,43 @@ func disparou(forca: float = 0.08) -> void:
 	_coice = max(_coice, forca)
 
 
-## Skins de arma (etapa 7): troca só o material, mesmo modelo.
+## Skin da arma (só visual, mesmo modelo). Cada PARTE recebe o material certo:
+##  - corpo principal e madeira: padrão/textura da skin
+##  - metais e ferragens: cor de detalhe da skin
+##  - vidro/lente da luneta: mantém o original
+## null volta ao visual original do modelo.
+func aplicar_skin(skin: DadosSkinArma) -> void:
+	var principal := CatalogoSkins.material(skin) if skin else null
+	var secundario := CatalogoSkins.material_secundario(skin) if skin else null
+	# Maior superfície do modelo = corpo principal
+	var maior_mi: MeshInstance3D = null
+	var maior_i := 0
+	var maior_n := -1
+	var malhas: Array = find_children("*", "MeshInstance3D", true, false).filter(func(m): return m != _clarao)
+	for mi in malhas:
+		for i in mi.mesh.get_surface_count():
+			var n: int = mi.mesh.surface_get_array_len(i)
+			if n > maior_n:
+				maior_n = n
+				maior_mi = mi
+				maior_i = i
+	for mi in malhas:
+		mi.material_override = null
+		for i in mi.mesh.get_surface_count():
+			if skin == null:
+				mi.set_surface_override_material(i, null)
+				continue
+			var orig: Material = mi.mesh.surface_get_material(i)
+			var nome := (orig.resource_name if orig else "").to_lower()
+			if "glass" in nome or "lens" in nome or "vidro" in nome:
+				mi.set_surface_override_material(i, null)
+				continue
+			var eh_principal: bool = (mi == maior_mi and i == maior_i) or "wood" in nome \
+				or (nome.begins_with("main") and nome != "maindark")
+			mi.set_surface_override_material(i, principal if eh_principal else secundario)
+
+
+## Compatibilidade: aplica um material único em tudo.
 func aplicar_material(mat: Material) -> void:
 	for mi in find_children("*", "MeshInstance3D", true, false):
 		if mi != _clarao:

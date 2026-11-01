@@ -207,9 +207,15 @@ func tentar_transpor(_direcao: Vector3) -> bool:
 			destino = chao.position + Vector3.UP * 0.05
 			break
 	if destino == Vector3.INF:
-		# Obstáculo largo: termina em cima dele
+		# Obstáculo largo: termina em cima dele...
 		var em_cima := Vector3(borda.x, topo.position.y + 0.05, borda.z) + frente * 0.35
 		if not j._espaco_livre(em_cima, j.ALTURA_EM_PE):
+			return false
+		# ...mas se logo depois vem uma parede mais alta (ex.: caixote encostado num
+		# container), é melhor o pulo normal, que agarra a beirada de cima.
+		var q4 := PhysicsRayQueryParameters3D.create(em_cima + Vector3.UP * 1.0, em_cima + Vector3.UP * 1.0 + frente * 1.2, 1)
+		q4.exclude = [j.get_rid()]
+		if not esp.intersect_ray(q4).is_empty():
 			return false
 		destino = em_cima
 	j._escalada_inicio = pe

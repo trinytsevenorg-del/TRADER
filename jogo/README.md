@@ -560,6 +560,34 @@ Dicas:
 
 ---
 
+## Rodada 2: evolução (empunhadura, parkour, sons, skins)
+
+Diagnóstico completo, o que mudou e o que falta: **`docs/RODADA2_DIAGNOSTICO_E_EVOLUCAO.md`**.
+Resumo:
+- **Armas nas mãos de verdade**: armas longas com coronha no ombro e as duas mãos por IK
+  próprio (`characters/humano/ik_dois_ossos.gd`), dedos da mão de apoio fechados, prontidão
+  fora da mira, troca de arma animada. Ajuste individual por arma no `.tres` (grupo
+  *Empunhadura*: posição, rotação, escala, ângulo de prontidão).
+- **Parkour em módulo** (`scripts/jogador/parkour.gd`) + **transpor obstáculos** correndo e
+  **recuperação de aterrissagem**.
+- **Sons** sintetizados (`tools/gerar_sons.py`), volume nas configurações.
+- **Skins por parte da arma** (corpo, metais, vidro) com textura/material próprios opcionais;
+  72 skins (Dourada e Futurista em todas as armas).
+- **Tiro alinhado ao corpo** (não atravessa o que só a câmera enxerga por cima).
+- **Rede**: recarga, troca de arma e skins dos bots sincronizadas.
+
+### Ajustar a empunhadura de uma arma
+1. Abra `data/armas/<arma>.tres`, grupo **Empunhadura (ajuste individual)**:
+   `ajuste_posicao` (m: x direita, y cima, z frente), `ajuste_rotacao` (graus),
+   `ajuste_escala`, `angulo_pronto_baixo`.
+2. Para mudar onde as mãos seguram: abra `weapons/modelos/<arma>.tscn` e mova os marcadores
+   **Mao** (cabo) e **MaoEsquerda** (guarda-mão).
+
+### Criar uma skin com textura/material próprios
+Duplique um `data/skins_armas/<arma>_<n>.tres`, numere em sequência e, no grupo
+*Personalizado*, arraste sua textura em `textura_albedo` ou seus materiais em
+`material_principal` / `material_secundario`.
+
 ## Todos os testes automáticos
 
 ```

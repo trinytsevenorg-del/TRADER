@@ -73,8 +73,7 @@ func mostrar_arma(id_arma: String, skin: DadosSkinArma) -> void:
 	arma.rotation.y = PI / 2.0
 	var comprimento := absf(arma.get_node("Cano").position.z) + 0.25
 	arma.position = Vector3(-comprimento * 0.4, 0, 0)
-	if skin:
-		arma.aplicar_material(CatalogoSkins.material(skin))
+	arma.aplicar_skin(skin)
 	_camera.position = Vector3(0, 0.12, comprimento * 2.2 + 0.25)
 	_camera.look_at(Vector3(0, 0.05, 0))
 

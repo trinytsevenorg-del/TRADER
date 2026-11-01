@@ -3,11 +3,12 @@ class_name CatalogoSkins
 ## Para criar uma skin nova: duplique um .tres, mude id/nome/cores e numere em
 ## sequência (ex.: corisco_ar_5.tres). Ela aparece sozinha nas caixas e no inventário.
 
-const MAX_POR_ARMA := 12
+const MAX_POR_ARMA := 64  ## até 64 skins por arma (768 no total)
 
 static var _cache := {}
 static var _por_arma := {}
 static var _materiais := {}
+static var _secundarios := {}
 
 
 static func carregar(id: String) -> DadosSkinArma:
@@ -45,20 +46,22 @@ static func da_raridade(rar: String) -> Array:
 static func material(s: DadosSkinArma) -> StandardMaterial3D:
 	if s == null:
 		return null
+	if s.material_principal:
+		return s.material_principal
 	if _materiais.has(s.id):
 		return _materiais[s.id]
 	var m := StandardMaterial3D.new()
 	# Metal limitado: sem reflexo de céu (leve no celular) metal puro fica escuro.
 	m.metallic = minf(s.metalico, 0.45)
 	m.roughness = s.rugosidade
-	m.albedo_texture = _textura(s)
+	m.albedo_texture = s.textura_albedo if s.textura_albedo else _textura(s)
 	m.uv1_triplanar = true
 	m.uv1_scale = Vector3.ONE * 3.0
 	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	if s.emissao > 0.0:
 		m.emission_enabled = true
 		m.emission = s.cor_b
-		m.emission_energy_multiplier = s.emissao * 0.5
+		m.emission_energy_multiplier = s.emissao * 0.2
 		m.emission_texture = m.albedo_texture
 	_materiais[s.id] = m
 	return m
@@ -104,3 +107,19 @@ static func _textura(s: DadosSkinArma) -> ImageTexture:
 						img.set_pixel(x, y, s.cor_b)
 	img.generate_mipmaps()
 	return ImageTexture.create_from_image(img)
+
+
+## Material das partes secundárias (metal, ferragens) da skin.
+static func material_secundario(s: DadosSkinArma) -> Material:
+	if s == null:
+		return null
+	if s.material_secundario:
+		return s.material_secundario
+	if _secundarios.has(s.id):
+		return _secundarios[s.id]
+	var m := StandardMaterial3D.new()
+	m.albedo_color = s.cor_detalhe
+	m.metallic = minf(s.metalico_detalhe, 0.45)
+	m.roughness = s.rugosidade_detalhe
+	_secundarios[s.id] = m
+	return m

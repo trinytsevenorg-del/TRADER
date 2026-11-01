@@ -14,3 +14,5 @@ cor_b = Color(0.5, 0.35, 0.1, 1)
 metalico = 1.0
 rugosidade = 0.3
 emissao = 0.0
+cor_detalhe = Color(0.2, 0.14, 0.06, 1)
+metalico_detalhe = 0.8

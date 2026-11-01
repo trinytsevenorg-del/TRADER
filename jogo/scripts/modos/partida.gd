@@ -70,6 +70,8 @@ func criar_bot(indice: int, nome := "", info := {}) -> Jogador:
 	if Sessao.dificuldade == 0:
 		opcoes.erase("agulha_sr")
 		opcoes.erase("coruja_sx")
+	if info.has("skins"):
+		b.armas.skin_bot_fixa = info.skins
 	b.armas.equipar_armas(info.get("armas", [opcoes[randi() % opcoes.size()], CatalogoArmas.SECUNDARIAS[randi() % 2]]))
 	if nome == "":
 		var livres: Array = Sessao.NOMES_BOTS.duplicate()

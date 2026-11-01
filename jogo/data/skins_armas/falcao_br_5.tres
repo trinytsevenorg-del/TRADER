@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="DadosSkinArma" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/skins/dados_skin_arma.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "falcao_br_5"
+nome = "Dourada"
+arma = "falcao_br"
+raridade = "epica"
+padrao = 0
+cor_a = Color(0.935, 0.705, 0.235, 1)
+cor_b = Color(0.6, 0.42, 0.1, 1)
+metalico = 0.9
+rugosidade = 0.25
+emissao = 0.0
+cor_detalhe = Color(0.35, 0.25, 0.08, 1)
+metalico_detalhe = 0.8

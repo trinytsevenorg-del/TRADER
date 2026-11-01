@@ -15,7 +15,7 @@ func _ready() -> void:
 	P.resetar()
 
 	# Catálogo
-	_checar("48 skins de arma (4 por arma)", CatalogoSkins.todas().size() == 48)
+	_checar("72 skins de arma (6 por arma)", CatalogoSkins.todas().size() == 72)
 	var rars := {}
 	for s in CatalogoSkins.todas():
 		rars[s.raridade] = true
