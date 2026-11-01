@@ -1,15 +1,18 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://scripts/armas/arma.gd" id="1_w5w53"]
-[ext_resource type="PackedScene" path="res://assets/weapons/falcao_br.fbx" id="2_acrah"]
+[ext_resource type="Script" path="res://scripts/armas/arma.gd" id="1_mfvdf"]
+[ext_resource type="PackedScene" path="res://assets/weapons/falcao_br.fbx" id="2_rfgsg"]
 
 [node name="FalcaoBr" type="Node3D"]
-script = ExtResource("1_w5w53")
+script = ExtResource("1_mfvdf")
 
-[node name="Modelo" type="Node3D" parent="." instance=ExtResource("2_acrah")]
+[node name="Modelo" type="Node3D" parent="." instance=ExtResource("2_rfgsg")]
 transform = Transform3D(-8.145e-09, 0, 0.186336, 0, 0.186336, 0, -0.186336, 0, -8.145e-09, -4.94492e-10, 0.0120566, -0.0113127)
 
 [node name="Mao" type="Marker3D" parent="."]
+
+[node name="MaoEsquerda" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.01817e-08, 0.114511, -0.232929)
 
 [node name="Cano" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.000205972, 0.158983, -0.527621)

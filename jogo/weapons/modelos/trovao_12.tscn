@@ -1,15 +1,18 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://scripts/armas/arma.gd" id="1_vtnpo"]
-[ext_resource type="PackedScene" path="res://assets/weapons/trovao_12.fbx" id="2_6i6d5"]
+[ext_resource type="Script" path="res://scripts/armas/arma.gd" id="1_dhsyb"]
+[ext_resource type="PackedScene" path="res://assets/weapons/trovao_12.fbx" id="2_lu16j"]
 
 [node name="Trovao12" type="Node3D"]
-script = ExtResource("1_vtnpo")
+script = ExtResource("1_dhsyb")
 
-[node name="Modelo" type="Node3D" parent="." instance=ExtResource("2_6i6d5")]
+[node name="Modelo" type="Node3D" parent="." instance=ExtResource("2_lu16j")]
 transform = Transform3D(-7.405e-09, 0, 0.169407, 0, 0.169407, 0, -0.169407, 0, -7.405e-09, 2.7963e-09, 0.0209562, 0.063972)
 
 [node name="Mao" type="Marker3D" parent="."]
+
+[node name="MaoEsquerda" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.2951e-08, 0.00898744, -0.296285)
 
 [node name="Cano" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.000180639, 0.0574438, -0.668411)

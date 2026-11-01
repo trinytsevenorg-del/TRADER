@@ -1,15 +1,18 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://scripts/armas/arma.gd" id="1_lsb3j"]
-[ext_resource type="PackedScene" path="res://assets/weapons/ciclone_a12.fbx" id="2_wjfu3"]
+[ext_resource type="Script" path="res://scripts/armas/arma.gd" id="1_38t4p"]
+[ext_resource type="PackedScene" path="res://assets/weapons/ciclone_a12.fbx" id="2_1a5x2"]
 
 [node name="CicloneA12" type="Node3D"]
-script = ExtResource("1_lsb3j")
+script = ExtResource("1_38t4p")
 
-[node name="Modelo" type="Node3D" parent="." instance=ExtResource("2_wjfu3")]
+[node name="Modelo" type="Node3D" parent="." instance=ExtResource("2_1a5x2")]
 transform = Transform3D(-8.01637e-09, 0, 0.183393, 0, 0.183393, 0, -0.183393, 0, -8.01637e-09, -1.59224e-09, 0.0221527, -0.0364261)
 
 [node name="Mao" type="Marker3D" parent="."]
+
+[node name="MaoEsquerda" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.51523e-08, 0.0512833, -0.346643)
 
 [node name="Cano" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.000201178, 0.0896411, -0.780318)

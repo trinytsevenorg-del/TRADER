@@ -1,15 +1,18 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://scripts/armas/arma.gd" id="1_ig8m3"]
-[ext_resource type="PackedScene" path="res://assets/weapons/agulha_sr.fbx" id="2_ksapf"]
+[ext_resource type="Script" path="res://scripts/armas/arma.gd" id="1_jmodn"]
+[ext_resource type="PackedScene" path="res://assets/weapons/agulha_sr.fbx" id="2_a6ty8"]
 
 [node name="AgulhaSr" type="Node3D"]
-script = ExtResource("1_ig8m3")
+script = ExtResource("1_jmodn")
 
-[node name="Modelo" type="Node3D" parent="." instance=ExtResource("2_ksapf")]
+[node name="Modelo" type="Node3D" parent="." instance=ExtResource("2_a6ty8")]
 transform = Transform3D(-7.27916e-09, 0, 0.166528, 0, 0.166528, 0, -0.166528, 0, -7.27916e-09, -1.04987e-09, 0.0270388, -0.0240182)
 
 [node name="Mao" type="Marker3D" parent="."]
+
+[node name="MaoEsquerda" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.76584e-08, 0.0438045, -0.403976)
 
 [node name="Cano" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.000220371, 0.0763285, -0.907725)

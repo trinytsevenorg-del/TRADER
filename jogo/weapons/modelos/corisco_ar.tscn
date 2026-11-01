@@ -1,15 +1,18 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://scripts/armas/arma.gd" id="1_e3ike"]
-[ext_resource type="PackedScene" path="res://assets/weapons/corisco_ar.fbx" id="2_ngwi7"]
+[ext_resource type="Script" path="res://scripts/armas/arma.gd" id="1_m07sv"]
+[ext_resource type="PackedScene" path="res://assets/weapons/corisco_ar.fbx" id="2_4rdio"]
 
 [node name="CoriscoAr" type="Node3D"]
-script = ExtResource("1_e3ike")
+script = ExtResource("1_m07sv")
 
-[node name="Modelo" type="Node3D" parent="." instance=ExtResource("2_ngwi7")]
+[node name="Modelo" type="Node3D" parent="." instance=ExtResource("2_4rdio")]
 transform = Transform3D(-7.09488e-09, 0, 0.162312, 0, 0.162312, 0, -0.162312, 0, -7.09488e-09, -2.41721e-10, 0.015109, -0.00552994)
 
 [node name="Mao" type="Marker3D" parent="."]
+
+[node name="MaoEsquerda" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.2138e-08, -0.00107401, -0.277684)
 
 [node name="Cano" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.000104376, 0.120288, -0.627076)

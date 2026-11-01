@@ -5,6 +5,7 @@ class_name ModeloArma
 ## Convenção: a frente da arma é -Z e o topo é +Y.
 ## Pontos de encaixe (Marker3D) que TODA cena de arma deve ter:
 ##   Mao  - onde a mão direita segura (o modelo é posicionado por este ponto)
+##   MaoEsquerda - onde a mão de apoio segura (guarda-mão); opcional nas pistolas
 ##   Cano - saída do tiro (clarão e rastro saem daqui)
 ##   Mira - ponto da mira/luneta
 ## Para trocar o modelo provisório por um .glb: apague o nó "Modelo", arraste o
@@ -14,6 +15,7 @@ class_name ModeloArma
 @onready var mao: Marker3D = $Mao
 @onready var cano: Marker3D = $Cano
 @onready var mira: Marker3D = $Mira
+@onready var mao_esquerda: Marker3D = get_node_or_null("MaoEsquerda")
 
 var _clarao: MeshInstance3D
 var _base_modelo := Transform3D.IDENTITY

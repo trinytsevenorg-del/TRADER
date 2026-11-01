@@ -1,8 +1,9 @@
 extends SceneTree
 ## Monta weapons/modelos/<id>.tscn a partir de assets/weapons/<id>.fbx (ou .glb):
 ##  - gira para o cano apontar para -Z (frente) e escala para o comprimento real;
-##  - acha os pontos de encaixe pela geometria: Mao (empunhadura), Cano (ponta do
-##    cano) e Mira (topo, sobre a empunhadura).
+##  - acha os pontos de encaixe pela geometria: Mao (cabo, mão direita),
+##    MaoEsquerda (guarda-mão), Cano (ponta do cano) e Mira (topo).
+##  Depois de gerado, dá para mover os Marker3D à mão no editor (ajuste fino).
 ## Uso: godot --headless --path jogo -s res://tools/montar_armas.gd
 ## Para um modelo novo: coloque o arquivo em assets/weapons/<id>.fbx (cano para +X,
 ## topo para +Y, origem perto do gatilho) e rode de novo.
@@ -58,6 +59,16 @@ func _initialize() -> void:
 				soma_g += v; ng += 1
 		var cabo: Vector3 = soma_g / float(maxi(ng, 1))
 		var mao_m := Vector3(cabo.x, lerpf(cabo.y, 0.0, 0.55), 0.0)  # meio do cabo
+		# Mão esquerda: no guarda-mão, ~45% do caminho entre o cabo e a boca do cano,
+		# na parte de baixo da arma naquela "fatia" (onde a mão apoia).
+		var x_gm := lerpf(mao_m.x, cano_m.x, 0.45 if id not in ["vespa_p9", "rinoceronte_50"] else 0.05)
+		var y_min := INF; var y_max := -INF
+		for v in vs:
+			if absf(v.x - x_gm) < comp * 0.04:
+				y_min = minf(y_min, v.y); y_max = maxf(y_max, v.y)
+		if y_min == INF:
+			y_min = cano_m.y - 0.3; y_max = cano_m.y
+		var mao_esq_m := Vector3(x_gm, lerpf(y_min, y_max, 0.25), 0.0)
 		var mira_m := Vector3(mao_m.x + comp * 0.08, mx.y, 0.0)
 		# Modelo (+X frente) -> arma (-Z frente): gira 90° em Y; escala; empunhadura na origem
 		var base := Basis(Vector3.UP, PI / 2.0).scaled(Vector3.ONE * esc)
@@ -71,7 +82,7 @@ func _initialize() -> void:
 		modelo.transform = Transform3D(base, base * -mao_m)
 		raiz.add_child(modelo)
 		modelo.owner = raiz
-		for par in [["Mao", Vector3.ZERO], ["Cano", conv.call(cano_m) + Vector3(0, 0, -0.01)], ["Mira", conv.call(mira_m)]]:
+		for par in [["Mao", Vector3.ZERO], ["MaoEsquerda", conv.call(mao_esq_m)], ["Cano", conv.call(cano_m) + Vector3(0, 0, -0.01)], ["Mira", conv.call(mira_m)]]:
 			var mk := Marker3D.new()
 			mk.name = par[0]
 			mk.position = par[1]
@@ -80,6 +91,6 @@ func _initialize() -> void:
 		var ps := PackedScene.new()
 		ps.pack(raiz)
 		ResourceSaver.save(ps, "res://weapons/modelos/%s.tscn" % id)
-		print("%-15s escala %.3f  cano %s  mira %s" % [id, esc, conv.call(cano_m).snapped(Vector3.ONE * 0.001), conv.call(mira_m).snapped(Vector3.ONE * 0.001)])
+		print("%-15s escala %.3f  cano %s  mão esq. %s" % [id, esc, conv.call(cano_m).snapped(Vector3.ONE * 0.001), conv.call(mao_esq_m).snapped(Vector3.ONE * 0.001)])
 		raiz.free()
 	quit()

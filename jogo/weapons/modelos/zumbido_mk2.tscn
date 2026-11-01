@@ -1,15 +1,18 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://scripts/armas/arma.gd" id="1_kcv28"]
-[ext_resource type="PackedScene" path="res://assets/weapons/zumbido_mk2.fbx" id="2_6y8jl"]
+[ext_resource type="Script" path="res://scripts/armas/arma.gd" id="1_hxfkp"]
+[ext_resource type="PackedScene" path="res://assets/weapons/zumbido_mk2.fbx" id="2_ejixx"]
 
 [node name="ZumbidoMk2" type="Node3D"]
-script = ExtResource("1_kcv28")
+script = ExtResource("1_hxfkp")
 
-[node name="Modelo" type="Node3D" parent="." instance=ExtResource("2_6y8jl")]
+[node name="Modelo" type="Node3D" parent="." instance=ExtResource("2_ejixx")]
 transform = Transform3D(-7.09736e-09, 0, 0.162369, 0, 0.162369, 0, -0.162369, 0, -7.09736e-09, -8.01284e-10, 0.0247522, -0.0183312)
 
 [node name="Mao" type="Marker3D" parent="."]
+
+[node name="MaoEsquerda" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.61459e-09, 0.102609, -0.174202)
 
 [node name="Cano" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.04254e-09, 0.125836, -0.397115)

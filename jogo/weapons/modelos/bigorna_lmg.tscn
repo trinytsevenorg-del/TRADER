@@ -1,15 +1,18 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://scripts/armas/arma.gd" id="1_5o6vs"]
-[ext_resource type="PackedScene" path="res://assets/weapons/bigorna_lmg.fbx" id="2_c28wa"]
+[ext_resource type="Script" path="res://scripts/armas/arma.gd" id="1_3i80k"]
+[ext_resource type="PackedScene" path="res://assets/weapons/bigorna_lmg.fbx" id="2_yutir"]
 
 [node name="BigornaLmg" type="Node3D"]
-script = ExtResource("1_5o6vs")
+script = ExtResource("1_3i80k")
 
-[node name="Modelo" type="Node3D" parent="." instance=ExtResource("2_c28wa")]
+[node name="Modelo" type="Node3D" parent="." instance=ExtResource("2_yutir")]
 transform = Transform3D(-8.32906e-09, 0, 0.190547, 0, 0.190547, 0, -0.190547, 0, -8.32906e-09, -3.28479e-10, 0.011908, -0.00751472)
 
 [node name="Mao" type="Marker3D" parent="."]
+
+[node name="MaoEsquerda" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.00414e-08, 0.129357, -0.229721)
 
 [node name="Cano" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.53423e-05, 0.166864, -0.520492)

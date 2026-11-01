@@ -1,15 +1,18 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://scripts/armas/arma.gd" id="1_fm5o8"]
-[ext_resource type="PackedScene" path="res://assets/weapons/patrulha_dmr.fbx" id="2_eh1gp"]
+[ext_resource type="Script" path="res://scripts/armas/arma.gd" id="1_qvx6h"]
+[ext_resource type="PackedScene" path="res://assets/weapons/patrulha_dmr.fbx" id="2_ctpol"]
 
 [node name="PatrulhaDmr" type="Node3D"]
-script = ExtResource("1_fm5o8")
+script = ExtResource("1_qvx6h")
 
-[node name="Modelo" type="Node3D" parent="." instance=ExtResource("2_eh1gp")]
+[node name="Modelo" type="Node3D" parent="." instance=ExtResource("2_ctpol")]
 transform = Transform3D(-8.87555e-09, 0, 0.203049, 0, 0.203049, 0, -0.203049, 0, -8.87555e-09, -1.36823e-09, 0.0171106, -0.0313015)
 
 [node name="Mao" type="Marker3D" parent="."]
+
+[node name="MaoEsquerda" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.36493e-08, -0.0138674, -0.312261)
 
 [node name="Cano" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.000376009, 0.149383, -0.703912)
