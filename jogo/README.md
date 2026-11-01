@@ -61,8 +61,8 @@ arquivos e permita "instalar apps desconhecidos" para esse app quando o Android 
 | Etapa | Conteúdo | Status |
 |---|---|---|
 | 1 | Personagem, câmera e controles | **pronta** |
-| 2 | Parkour e rolamento | próxima |
-| 3 | Armas e tiro | |
+| 2 | Parkour e rolamento | **pronta** |
+| 3 | Armas e tiro | próxima |
 | 4 | Mapa urbano | |
 | 5 | Bots e mata-mata | |
 | 6 | Modelos 3D e animações | |
@@ -145,8 +145,54 @@ com outro e aperta um botão com um terceiro, e se o tamanho dos botões está c
 Os botões ficam em `ui/hud/controles_toque.gd`, na lista `botoes` (posição e raio), fáceis de
 ajustar.
 
+---
+
+## Etapa 2: parkour, rolamento, câmera nova e HUD personalizável
+
+### Como funciona
+
+| Ação | Como fazer | Tecla no PC |
+|---|---|---|
+| Pulo duplo | PULAR de novo no ar (sem parede por perto) | Espaço |
+| **Correr na parede** | Pule, fique ao lado da parede e, caindo, aperte PULAR: gruda e corre pela parede, escorregando devagar (até 1,6 s) | Espaço |
+| Pular da parede | Na parede, PULAR de novo: salta para longe, mantendo o embalo (dá para ir de uma parede a outra) | Espaço |
+| Correr parede acima | No ar, **de frente** para a parede, aperte PULAR | Espaço |
+| Agarrar e subir beirada | Automático: no ar, empurrando contra uma parede cujo topo está ao alcance das mãos | — |
+| Rolamento | ROLAR. 0,3 s invencível, recarga de 0,8 s. No ar, fica guardado e sai ao aterrissar | Shift |
+| Deslizar | DESLIZ. correndo. Cair de alto correndo também desliza sozinho. Passa por baixo de vãos baixos | C ou Ctrl |
+
+Nenhuma ação "mata" a velocidade: sair do deslize pulando, pular no fim do rolamento,
+pular da parede e terminar uma escalada, tudo herda o embalo.
+
+### Câmera
+- **Explorando:** longe (5,4 m) e alta, vendo bastante do mapa.
+- **Mirando** (MIRA / botão direito): vem para o ombro. Na etapa 3 cada arma decide se
+  aproxima ao atirar (luneta/zoom leve, como snipers e alguns fuzis) ou não (pistolas, a
+  maioria dos fuzis).
+
+### HUD personalizável
+Configurações (II / Esc) > **PERSONALIZAR BOTÕES**: arraste qualquer botão; toque num botão
+e use **− / +** para o tamanho; **Padrão** restaura; **Concluir** salva no celular.
+Também há a opção **Tiro automático** (usada a partir da etapa 3).
+
+### O que testar
+- [ ] Muro azul comprido (à direita): corra ao lado dele, pule e aperte PULAR caindo → corre na parede.
+- [ ] Paredes paralelas laranja/azul (no fundo, à direita): pule de uma parede para a outra.
+- [ ] Caixas laranja: pule correndo de frente para a caixa de 2,2 m (agarra a beirada sozinho) e
+      use correr parede acima na de 3 m.
+- [ ] Muro baixo (à esquerda): pule por cima correndo.
+- [ ] Túnel baixo laranja (à esquerda): entre deslizando, saia do outro lado.
+- [ ] Role várias vezes seguidas e veja a recarga; role no ar e veja sair ao aterrissar.
+- [ ] Personalize o HUD, feche e abra o jogo: o layout continua.
+
+Teste automático: `godot --headless --path jogo res://tests/teste_auto_etapa2.tscn`
+(17 verificações: pulo duplo, parede, parede a parede, beiradas, rolamento, deslize, túnel).
+
+Animações que o pacote CC0 não tem (deslize, corrida na parede) usam uma animação parecida
+mais a inclinação do corpo. Na etapa 6 dá para trocar por animações do Mixamo.
+
 ### Ajustar a "sensação" do movimento
 
 Clique no nó **Jogador** dentro de `characters/jogador.tscn`: no Inspetor aparecem os grupos
-*Movimento no chão*, *Pulo* e *Visual* com todos os números (velocidade, aceleração, gravidade,
+*Movimento no chão*, *Pulo*, *Parede (wall run)*, *Escalar beirada*, *Rolamento*, *Deslize* e *Visual* com todos os números (velocidade, aceleração, gravidade,
 altura do pulo…). A câmera (nó **CameraRig**) tem distância, ombro, FOV e suavização.

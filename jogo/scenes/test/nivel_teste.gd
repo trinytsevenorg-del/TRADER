@@ -50,6 +50,15 @@ func _ready() -> void:
 	Construtor.bloco(geo, Vector3(-1.6, 2, 18), Vector3(0.5, 4, 10), concreto)
 	Construtor.bloco(geo, Vector3(-2.8, 4.25, 18), Vector3(2.9, 0.5, 10), concreto)
 
+	# Paredes paralelas (corrida na parede + pular de uma parede para a outra).
+	Construtor.bloco(geo, Vector3(28, 3, -12), Vector3(0.6, 6, 18), laranja)
+	Construtor.bloco(geo, Vector3(33, 3, -12), Vector3(0.6, 6, 18), azul)
+	# Muro baixo (1,1 m) e túnel baixo (passar rolando/deslizando por baixo).
+	Construtor.bloco(geo, Vector3(-28, 0.55, -4), Vector3(4, 1.1, 0.6), concreto)
+	Construtor.bloco(geo, Vector3(-28, 1.7, 8), Vector3(4, 0.8, 4), laranja)
+	Construtor.bloco(geo, Vector3(-29.8, 0.65, 8), Vector3(0.4, 1.3, 4), concreto)
+	Construtor.bloco(geo, Vector3(-26.2, 0.65, 8), Vector3(0.4, 1.3, 4), concreto)
+
 	# Pilares.
 	for i in 6:
 		Construtor.bloco(geo, Vector3(-25 + i * 4, 3, 25), Vector3(1, 6, 1), laranja)

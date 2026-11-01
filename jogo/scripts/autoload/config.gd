@@ -26,6 +26,8 @@ var valores := {
 	"forcar_toque": false,   # mostra os controles de toque também no PC
 	"personagem": 0,         # 0 = masculino, 1 = feminino
 	"skin": 0,               # variação visual do personagem
+	"tiro_automatico": false, # atira sozinho quando a mira passa no inimigo (etapa 3)
+	"hud": {},               # posições/tamanhos dos botões personalizados
 }
 
 

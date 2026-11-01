@@ -14,21 +14,24 @@ class_name CameraTPS
 ## caminho, a câmera encosta antes dela, então ela nunca atravessa paredes
 ## (nem para o lado, quando o ombro encosta numa parede).
 
-@export var altura := 1.55            ## altura do ponto de foco (acima dos pés)
-@export var ombro := 0.6              ## deslocamento lateral (direita)
-@export var distancia := 3.3          ## distância normal da câmera
+## Explorando: câmera longe e alta, vendo bastante do mapa (personagem pequeno na tela).
+## Mirando: câmera vem para perto do ombro.
+@export var altura := 1.7             ## altura do ponto de foco (acima dos pés)
+@export var ombro := 0.3              ## deslocamento lateral (direita) explorando
+@export var ombro_mira := 0.65        ## deslocamento lateral mirando
+@export var distancia := 5.4          ## distância explorando
 @export var distancia_mira := 1.7     ## distância ao mirar
-@export var fov_normal := 72.0
-@export var fov_mira := 58.0
+@export var fov_normal := 70.0
+@export var fov_mira := 60.0
 @export var pitch_min_graus := -70.0
 @export var pitch_max_graus := 65.0
 ## Suavidade de seguir o personagem (maior = mais "grudado").
 @export var seguir_horizontal := 24.0
 @export var seguir_vertical := 12.0
-@export var velocidade_transicao_mira := 14.0
+@export var velocidade_transicao_mira := 9.0  ## maior = transição mais rápida
 
 var yaw := 0.0
-var pitch := deg_to_rad(-12.0)
+var pitch := deg_to_rad(-22.0)
 var mirando := false
 ## Multiplicador de zoom da arma (as snipers vão usar isto na etapa 3).
 var zoom_arma := 1.0
@@ -104,6 +107,7 @@ func _process(delta: float) -> void:
 	_mira_t = move_toward(_mira_t, 1.0 if mirando else 0.0, delta * velocidade_transicao_mira * 0.5)
 	var t := ease(_mira_t, -2.0)  # suaviza começo e fim
 	_braco.spring_length = lerp(distancia, distancia_mira, t)
+	_braco_ombro.spring_length = lerp(ombro, ombro_mira, t)
 	camera.fov = lerp(fov_normal, fov_mira / zoom_arma, t)
 
 

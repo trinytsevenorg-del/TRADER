@@ -15,6 +15,9 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	if Input.is_action_just_pressed("pausar"):
+		var hud := get_tree().get_first_node_in_group("controles_toque")
+		if hud and hud.editando:
+			return
 		alternar()
 
 
@@ -23,6 +26,13 @@ func alternar() -> void:
 	Controles.menu_aberto = visible
 	if not visible:
 		Config.salvar()
+
+
+func _personalizar_hud() -> void:
+	alternar()  # fecha o menu
+	var hud := get_tree().get_first_node_in_group("controles_toque")
+	if hud:
+		hud.iniciar_edicao()
 
 
 func _montar() -> void:
@@ -60,10 +70,18 @@ func _montar() -> void:
 	_slider("Sensibilidade (mouse)", "sens_mouse", 0.2, 3.0, 0.05)
 	_slider("Sensibilidade mirando / luneta", "sens_mira", 0.2, 1.5, 0.05)
 	_slider("Aim assist (0 = desligado)", "aim_assist", 0.0, 1.0, 0.05)
+	_checkbox("Tiro automático (atira ao mirar no inimigo)", "tiro_automatico")
 	_checkbox("Inverter eixo Y", "inverter_y")
 	_checkbox("Mostrar FPS", "mostrar_fps")
 	_checkbox("Forçar controles de toque (testar no PC)", "forcar_toque")
 	_opcoes("Qualidade gráfica", "qualidade", ["Baixa (mais FPS)", "Média", "Alta"])
+
+	var hud := Button.new()
+	hud.text = "PERSONALIZAR BOTÕES"
+	hud.custom_minimum_size = Vector2(0, 60)
+	hud.add_theme_font_size_override("font_size", 22)
+	hud.pressed.connect(_personalizar_hud)
+	_caixa.add_child(hud)
 
 	var voltar := Button.new()
 	voltar.text = "VOLTAR AO JOGO"

@@ -116,6 +116,9 @@ func _tocar(nome: String, velocidade: float = 1.0) -> void:
 
 
 ## Escolhe a animação conforme o estado do personagem.
+## (Animações que o pacote CC0 não tem, como deslize e corrida na parede, usam uma
+##  animação parecida + inclinação do corpo feita pelo script do jogador. Na etapa 6
+##  dá para colocar animações do Mixamo no lugar; veja o README.)
 func atualizar_animacao(estado: StringName, fator_vel: float, mirando: bool) -> void:
 	match estado:
 		&"correndo":
@@ -127,5 +130,15 @@ func atualizar_animacao(estado: StringName, fator_vel: float, mirando: bool) -> 
 				_tocar("Sprint", clamp(fator_vel, 0.85, 1.2))
 		&"pulando", &"caindo":
 			_tocar("Jump")
+		&"parede":
+			_tocar("Sprint", 1.1)
+		&"subindo_parede":
+			_tocar("Sprint", 1.3)
+		&"escalando":
+			_tocar("Jump_Land", 1.6)
+		&"rolando":
+			_tocar("Roll", 3.0)  # a animação tem 1,47 s; o rolamento dura ~0,45 s
+		&"deslizando":
+			_tocar("Crouch_Idle", 0.5)
 		_:
 			_tocar("Pistol_Idle" if mirando else "Idle")
