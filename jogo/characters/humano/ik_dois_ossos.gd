@@ -26,6 +26,9 @@ var ajuste_mao := Transform3D.IDENTITY
 var copiar_dedos: Array = []
 ## Como converter a rotação local de um lado para o outro (espelho): multiplica x,y,z,w.
 var espelho_dedos := Vector4(1, 1, 1, 1)
+## Dedos fechados numa pose calculada (envolvendo o guarda-mão/cabo):
+## pares [osso, rotação local]. Usado no lugar de copiar_dedos quando preenchido.
+var curvar_dedos: Array = []
 
 var _i_braco := -1
 var _i_antebraco := -1
@@ -91,6 +94,8 @@ func _process_modification() -> void:
 	for par in copiar_dedos:
 		var q := esq.get_bone_pose_rotation(par[1])
 		esq.set_bone_pose_rotation(par[0], Quaternion(q.x * espelho_dedos.x, q.y * espelho_dedos.y, q.z * espelho_dedos.z, q.w * espelho_dedos.w).normalized())
+	for par in curvar_dedos:
+		esq.set_bone_pose_rotation(par[0], par[1])
 	# 4) Orientação da mão (empunhadura)
 	if girar_mao:
 		var g_mao3 := esq.get_bone_global_pose(_i_mao)

@@ -177,12 +177,18 @@ func _rodar() -> void:
 		_checar("mira de fuzil gerada (Rifle_Aim_Down/Neutral/Up)",
 			mod._obter_biblioteca().has_animation("Rifle_Aim_Neutral") and mod._obter_biblioteca().has_animation("Rifle_Aim_Up"))
 		_checar("arma longa usa a mira de fuzil", mod._pontos_mira[1].animation == &"Rifle_Aim_Neutral")
+		_checar("dedos da mão de apoio fecham em volta da arma (%d falanges)" % mod._ik_e.curvar_dedos.size(), mod._ik_e.curvar_dedos.size() >= 12)
 		var esq: Skeleton3D = mod._esqueleto
 		var mao_e := BoneAttachment3D.new()
 		mao_e.bone_name = "hand_l"
 		esq.add_child(mao_e)
 		await _esperar(0.3)
-		var guarda: Node3D = _a.modelo_arma.get_node("MaoEsquerda")
+		# alvo da mão esquerda: empunhadura calculada (palma embaixo do guarda-mão)
+		var guarda: Node3D = mod._alvo_empunhadura_e
+		var baixo_guarda: Vector3 = _a.modelo_arma.global_transform * mod._guarda_local
+		var marcador: Vector3 = _a.modelo_arma.get_node("MaoEsquerda").global_position
+		_checar("palma vai para baixo do guarda-mão, acima do marcador antigo (%.2f m acima)" % (baixo_guarda.y - marcador.y),
+			baixo_guarda.y > marcador.y + 0.03)
 		var antes := mao_e.global_position.distance_to(guarda.global_position)
 		_checar("mão esquerda no guarda-mão antes da recarga (%.2f m)" % antes, antes < 0.08)
 		_a.slot().pente = 5

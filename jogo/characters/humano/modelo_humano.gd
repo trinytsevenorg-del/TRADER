@@ -76,6 +76,15 @@ const MIRAS := {
 ## e quanto o corpo encosta na parede (a cápsula de colisão é mais larga que o corpo).
 const MAOS_BEIRADA := Vector3(0.23, 1.7, -0.4)
 const AVANCO_PENDURADO := 0.17
+## Empunhadura da mão de apoio (esquerda), no espaço da arma (-Z frente, +Y cima, +X direita):
+## para onde apontam os dedos (antes de fechar) e o polegar. A palma fica virada para a arma.
+##   Fuzil: palma por baixo do guarda-mão, dedos subindo pelo lado direito, polegar à frente.
+##   Pistola: palma envolvendo a mão do cabo pelo lado esquerdo, dedos por baixo do guarda-mato.
+const EMPUNHADURA_FUZIL := {"dedos": Vector3(1.0, -0.3, 0.0), "polegar": Vector3(0, 0, -1), "afasta": 0.015}
+const EMPUNHADURA_PISTOLA := {"dedos": Vector3(0.5, -0.85, -0.1), "polegar": Vector3(0, 0.2, -1), "afasta": 0.045}
+## Quanto cada falange fecha (rad): base, meio, ponta. Polegar fecha pouco.
+const CURVA_DEDOS := [0.9, 1.15, 0.8]
+const CURVA_POLEGAR := [-0.5, -0.4, -0.3]
 
 
 ## Primeiro osso que existir na lista (para aceitar esqueletos com nomes diferentes).
@@ -144,6 +153,12 @@ var _alvo_beirada_d: Marker3D
 var _alvo_beirada_e: Marker3D
 var _fase_pendurado := 0.0
 var _fator_vel := 0.0
+# Empunhadura calculada da mão esquerda
+var _alvo_empunhadura_e: Marker3D
+var _quadro_mao_e := Basis.IDENTITY   # dedos / polegar / palma da mão esquerda em repouso
+var _palma_e := Vector3.ZERO           # centro da palma em relação ao punho (no quadro acima)
+var _rest_mao_e := Basis.IDENTITY
+var _guarda_local := Vector3.ZERO      # embaixo do guarda-mão (espaço da arma), achado pela geometria
 
 
 func _ready() -> void:
@@ -365,14 +380,34 @@ func _atualizar_arma(delta: float) -> void:
 		else:
 			_arma.transform = _base_arma_mao * abaixar
 		_arma.visible = _peso_pendurado < 0.5  # pendurado: arma "nas costas"
+		_atualizar_empunhadura_e()
 	_recarga_t = maxf(_recarga_t - delta, 0.0)
 	if _pendurado or _peso_pendurado > 0.0:
 		return  # IK das mãos fica com a beirada (_atualizar_pendurado)
-	var alvo := 1.0 if (_arma_longa and _ik_permitido and _arma != null) else 0.0
-	for ik in [_ik_d, _ik_e]:
-		if ik:
-			ik.influence = move_toward(ik.influence, alvo, delta * 6.0)
-			ik.active = ik.influence > 0.001
+	var tem_arma := _arma != null and is_instance_valid(_arma) and _ik_permitido
+	var alvo_d := 1.0 if (_arma_longa and tem_arma) else 0.0
+	# Pistola: a mão de apoio envolve a mão do cabo quando mira com as duas mãos.
+	var alvo_e := alvo_d if _arma_longa else (_peso_mira if tem_arma else 0.0)
+	if _ik_d:
+		_ik_d.influence = move_toward(_ik_d.influence, alvo_d, delta * 6.0)
+		_ik_d.active = _ik_d.influence > 0.001
+	if _ik_e:
+		_ik_e.influence = move_toward(_ik_e.influence, alvo_e, delta * 6.0)
+		_ik_e.active = _ik_e.influence > 0.001
+
+
+## Alvo da mão esquerda na arma (posição + orientação da mão inteira).
+func _atualizar_empunhadura_e() -> void:
+	if _alvo_empunhadura_e == null or _ik_e == null:
+		return
+	if _arma_longa:
+		_alvo_empunhadura_e.global_transform = _pose_empunhadura_e(_arma.global_transform * _guarda_local, EMPUNHADURA_FUZIL)
+	else:
+		var cabo: Vector3 = (_arma.get_node("Mao") as Node3D).global_position
+		cabo -= _arma.global_basis.orthonormalized().y * 0.015
+		_alvo_empunhadura_e.global_transform = _pose_empunhadura_e(cabo, EMPUNHADURA_PISTOLA)
+	if not _pendurado and _ik_e.alvo != _alvo_mao_e:
+		_ik_e.alvo = _alvo_empunhadura_e
 
 
 ## Progresso da recarga de fuzil (0..1; 0 = sem recarga).
@@ -390,9 +425,10 @@ func _atualizar_recarga_fuzil() -> void:
 	var f := _fase_recarga()
 	if f <= 0.0 or _alvo_arma_e == null or not is_instance_valid(_alvo_arma_e):
 		if _ik_e.alvo == _alvo_mao_e:
-			_ik_e.alvo = _alvo_arma_e
+			_ik_e.alvo = _alvo_empunhadura_e
 		return
-	var guarda: Vector3 = _alvo_arma_e.global_position
+	_atualizar_empunhadura_e()
+	var guarda: Vector3 = _alvo_empunhadura_e.global_position
 	var mao_d: Vector3 = (_arma.get_node("Mao") as Node3D).global_position
 	var pente := mao_d.lerp(guarda, 0.4) - _arma.global_basis.orthonormalized().y * 0.1
 	var xf := global_transform.orthonormalized()
@@ -410,7 +446,8 @@ func _atualizar_recarga_fuzil() -> void:
 		p = pente + xf.basis.y * 0.04 * sin(PI * (f - 0.75) / 0.1)  # tapa no pente
 	else:
 		p = pente.lerp(guarda, smoothstep(0.85, 1.0, f))
-	_alvo_mao_e.global_position = p
+	# a mão mantém a orientação da empunhadura durante o caminho
+	_alvo_mao_e.global_transform = Transform3D(_alvo_empunhadura_e.global_basis, p)
 	if not _pendurado:
 		_ik_e.alvo = _alvo_mao_e
 
@@ -425,7 +462,8 @@ func _atualizar_pendurado(delta: float) -> void:
 	if _peso_pendurado <= 0.0:
 		if _ik_d.alvo == _alvo_beirada_d:
 			_ik_d.alvo = _alvo_arma_d
-			_ik_e.alvo = _alvo_arma_e
+			_ik_e.alvo = _alvo_empunhadura_e
+			_ik_e.girar_mao = true
 			_ik_d.girar_mao = true
 			_ik_d.ajuste_mao = _calibracao_mao.affine_inverse()
 			_ik_d.influence = 0.0
@@ -442,6 +480,7 @@ func _atualizar_pendurado(delta: float) -> void:
 	_ik_d.alvo = _alvo_beirada_d
 	_ik_e.alvo = _alvo_beirada_e
 	_ik_d.girar_mao = false
+	_ik_e.girar_mao = false
 	_ik_d.ajuste_mao = Transform3D.IDENTITY  # o ajuste é da empunhadura da arma
 	for ik in [_ik_d, _ik_e]:
 		ik.influence = _peso_pendurado
@@ -544,17 +583,73 @@ func _calibrar_mao() -> void:
 		_ik_d.girar_mao = true
 		_ik_d.ajuste_mao = _calibracao_mao.affine_inverse()
 		_ik_e = _novo_ik(BRACO_E, Vector3(0.6, -1, 0))
-		# Mão de apoio fecha os dedos no guarda-mão (copia a pose da mão do cabo)
-		for nome_dedo in ["index", "middle", "ring", "pinky", "thumb"]:
-			for k in ["01", "02", "03"]:
-				var e := _esqueleto.find_bone("%s_%s_l" % [nome_dedo, k])
-				var d := _esqueleto.find_bone("%s_%s_r" % [nome_dedo, k])
-				if e >= 0 and d >= 0:
-					_ik_e.copiar_dedos.append([e, d])
+		_calibrar_mao_esquerda()
 		# Alvos soltos (posição global definida a cada quadro)
 		_alvo_mao_e = _novo_alvo("AlvoRecargaMaoE")
 		_alvo_beirada_d = _novo_alvo("AlvoBeiradaD")
 		_alvo_beirada_e = _novo_alvo("AlvoBeiradaE")
+		_alvo_empunhadura_e = _novo_alvo("AlvoEmpunhaduraE")
+
+
+## Mede a mão esquerda em repouso (para onde apontam dedos, polegar e palma) e
+## calcula a pose dos dedos fechados em volta de um cabo. Funciona com qualquer
+## modelo de mesmo esqueleto: nada é ajustado à mão.
+func _calibrar_mao_esquerda() -> void:
+	var mao := _osso(BRACO_E[2])
+	var medio := _esqueleto.find_bone("middle_01_l")
+	var indicador := _esqueleto.find_bone("index_01_l")
+	var minimo := _esqueleto.find_bone("pinky_01_l")
+	if mao < 0 or medio < 0 or indicador < 0 or minimo < 0:
+		return
+	var r_mao := _esqueleto.get_bone_global_rest(mao)
+	var p_med := _esqueleto.get_bone_global_rest(medio).origin
+	var f := (p_med - r_mao.origin).normalized()
+	var lado := _esqueleto.get_bone_global_rest(indicador).origin - _esqueleto.get_bone_global_rest(minimo).origin
+	var s := (lado - f * lado.dot(f)).normalized()
+	var n := f.cross(s).normalized()     # sai da palma
+	_quadro_mao_e = Basis(f, s, n)
+	_palma_e = _quadro_mao_e.inverse() * (r_mao.origin.lerp(p_med, 0.6) - r_mao.origin)
+	_rest_mao_e = r_mao.basis.orthonormalized()
+	# Dedos: cada falange gira em volta do eixo que leva a ponta para a palma.
+	var eixo_dedos := f.cross(n).normalized()
+	var curvas := []
+	for nome in ["index", "middle", "ring", "pinky"]:
+		for k in 3:
+			curvas.append(["%s_0%d_l" % [nome, k + 1], eixo_dedos, CURVA_DEDOS[k]])
+	var t1 := _esqueleto.find_bone("thumb_01_l")
+	var t2 := _esqueleto.find_bone("thumb_02_l")
+	if t1 >= 0 and t2 >= 0:
+		var t := (_esqueleto.get_bone_global_rest(t2).origin - _esqueleto.get_bone_global_rest(t1).origin).normalized()
+		var eixo_pol := t.cross(n).normalized()
+		for k in 3:
+			curvas.append(["thumb_0%d_l" % (k + 1), eixo_pol, CURVA_POLEGAR[k]])
+	_ik_e.copiar_dedos.clear()
+	_ik_e.curvar_dedos.clear()
+	for c in curvas:
+		var b := _esqueleto.find_bone(c[0])
+		if b < 0:
+			continue
+		# Giro no espaço do esqueleto convertido para o espaço local do osso: q * (G⁻¹ R G)
+		var g := _esqueleto.get_bone_global_rest(b).basis.orthonormalized()
+		var eixo_local: Vector3 = (g.inverse() * c[1]).normalized()
+		var q := _esqueleto.get_bone_rest(b).basis.get_rotation_quaternion()
+		_ik_e.curvar_dedos.append([b, (q * Quaternion(eixo_local, c[2])).normalized()])
+	_ik_e.girar_mao = true
+
+
+## Pose da mão esquerda segurando a arma: palma encostada, dedos em volta.
+## Devolve o transform global do PUNHO (é o que o IK posiciona).
+func _pose_empunhadura_e(ponto: Vector3, emp: Dictionary) -> Transform3D:
+	var w := _arma.global_basis.orthonormalized()
+	var f := (w * (emp.dedos as Vector3)).normalized()
+	var s0 := (w * (emp.polegar as Vector3)).normalized()
+	var n := f.cross(s0).normalized()
+	var s := n.cross(f).normalized()
+	var alvo := Basis(f, s, n)
+	var base := alvo * _quadro_mao_e.inverse() * _rest_mao_e
+	var escala := _esqueleto.global_basis.get_scale().x
+	var palma := ponto - n * float(emp.afasta)  # a palma encosta na arma, não entra nela
+	return Transform3D(base, palma - alvo * _palma_e * escala)
 
 
 func _novo_alvo(nome: String) -> Marker3D:
@@ -652,15 +747,52 @@ func prender_arma(cena: PackedScene, dados: DadosArma = null) -> ModeloArma:
 		_alvo_arma_e = _arma.get_node_or_null("MaoEsquerda")
 		if _alvo_arma_e == null:
 			_alvo_arma_e = _alvo_arma_d
+		_guarda_local = _baixo_do_guarda_mao(_arma, _alvo_arma_e.position)
 		if not _pendurado:
 			_ik_d.alvo = _alvo_arma_d
-			_ik_e.alvo = _alvo_arma_e
+			_ik_e.alvo = _alvo_empunhadura_e
 	else:
 		_anexo_mao.add_child(_arma)
 		# Posiciona pelo ponto "Mao" da arma.
 		_base_arma_mao = _calibracao_mao * Transform3D(aj_rot.scaled(Vector3.ONE * aj_esc), aj_pos) * mao_local.affine_inverse()
 		_arma.transform = _base_arma_mao
 	return _arma
+
+
+## Onde a palma da mão esquerda encosta: a parte de BAIXO do guarda-mão, na altura
+## (z) do marcador MaoEsquerda. Um raio vertical desce pela geometria da arma; o
+## corpo da arma ali é o que fica até ~9 cm abaixo da superfície de cima (cano +
+## guarda-mão). Assim a mão não fica "pendurada" se o marcador estiver baixo.
+func _baixo_do_guarda_mao(arma: Node3D, marcador: Vector3) -> Vector3:
+	var inv := arma.global_transform.affine_inverse()
+	var de := Vector3(0, 1.0, marcador.z)
+	var ys: Array[float] = []
+	for mi in arma.find_children("*", "MeshInstance3D", true, false):
+		var xf: Transform3D = inv * mi.global_transform
+		var malha: Mesh = mi.mesh
+		if malha == null:
+			continue
+		for i in malha.get_surface_count():
+			var tri: PackedVector3Array = malha.surface_get_arrays(i)[Mesh.ARRAY_VERTEX]
+			var idx = malha.surface_get_arrays(i)[Mesh.ARRAY_INDEX]
+			var n: int = idx.size() if idx != null and idx.size() > 0 else tri.size()
+			for k in range(0, n - 2, 3):
+				var a := xf * tri[idx[k] if idx else k]
+				var b := xf * tri[idx[k + 1] if idx else k + 1]
+				var c := xf * tri[idx[k + 2] if idx else k + 2]
+				var hit = Geometry3D.ray_intersects_triangle(de, Vector3.DOWN, a, b, c)
+				if hit == null:
+					hit = Geometry3D.ray_intersects_triangle(de, Vector3.DOWN, a, c, b)
+				if hit != null:
+					ys.append(hit.y)
+	if ys.is_empty():
+		return marcador
+	var topo: float = ys.max()
+	var baixo := topo
+	for y in ys:
+		if y >= topo - 0.09:
+			baixo = minf(baixo, y)
+	return Vector3(marcador.x, baixo, marcador.z)
 
 
 ## Distância (m) do cabo até a ponta de trás da arma (coronha), pela geometria.

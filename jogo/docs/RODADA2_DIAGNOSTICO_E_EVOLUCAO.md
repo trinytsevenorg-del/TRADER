@@ -75,8 +75,9 @@ metralhadora, sniper), mirando e em prontidão.
 ## 4. O que ainda falta / limitações honestas
 - **Animações de fuzil**: ✅ feitas na v1.2 (mira de fuzil gerada no esqueleto + recarga com a
   mão esquerda por IK). Ainda são procedurais: uma animação de fuzil capturada (Mixamo) seria
-  mais rica em detalhes de ombro/cotovelo. A palma da mão esquerda não gira para baixo do
-  guarda-mão.
+  mais rica em detalhes de ombro/cotovelo. Na v1.3 a mão esquerda passou a segurar o
+  guarda-mão de verdade (palma por baixo, dedos fechados em volta) e a pistola é segurada com
+  as duas mãos.
 - **Pendurar em beiradas (shimmy)**: ✅ feito na v1.2 (pendurar, andar de lado, subir, saltar
   para trás, soltar). A pose das pernas usa a animação parada (não há animação de "pendurado"
   no pacote CC0); as mãos ficam na borda por IK.

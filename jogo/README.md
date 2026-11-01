@@ -597,6 +597,16 @@ Resumo:
   volta, encaixa (com um tapa) e retorna ao guarda-mão; a arma gira um pouco no meio da
   recarga. Dura exatamente o `tempo_recarga` da arma.
 
+### Mãos segurando a arma de verdade (v1.3)
+- **Mão de apoio calculada**: a palma encosta **embaixo do guarda-mão** e os dedos fecham em
+  volta dele (polegar do lado esquerdo, dedos subindo pelo direito). O ponto é achado pela
+  própria geometria da arma (um raio desce até a parte de baixo do guarda-mão), então serve
+  para qualquer modelo novo, mesmo com o marcador `MaoEsquerda` mal posicionado.
+- **Pistola com as duas mãos**: mirando, a mão esquerda envolve a mão do cabo por baixo do
+  guarda-mato.
+- Ajuste em `modelo_humano.gd`: `EMPUNHADURA_FUZIL` / `EMPUNHADURA_PISTOLA` (direção dos
+  dedos e do polegar, distância da palma) e `CURVA_DEDOS` / `CURVA_POLEGAR` (quanto fecham).
+
 ### Ajustar a empunhadura de uma arma
 1. Abra `data/armas/<arma>.tres`, grupo **Empunhadura (ajuste individual)**:
    `ajuste_posicao` (m: x direita, y cima, z frente), `ajuste_rotacao` (graus),
