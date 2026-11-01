@@ -167,5 +167,36 @@ func _rodar() -> void:
 	_j.receber_dano(30, null, _j.global_position, false)
 	_checar("fora do rolamento toma dano (vida %.0f)" % _j.saude.vida, _j.saude.vida == vida_j - 30)
 
+	# 12) Animações de fuzil: mira com tronco girado e recarga com a mão esquerda
+	await _esperar(1.0)
+	await _equipar("corisco_ar")
+	var mod = _j.modelo
+	if mod.get("_esqueleto") == null:
+		_checar("modelo humano presente para testar animações de fuzil", false)
+	else:
+		_checar("mira de fuzil gerada (Rifle_Aim_Down/Neutral/Up)",
+			mod._obter_biblioteca().has_animation("Rifle_Aim_Neutral") and mod._obter_biblioteca().has_animation("Rifle_Aim_Up"))
+		_checar("arma longa usa a mira de fuzil", mod._pontos_mira[1].animation == &"Rifle_Aim_Neutral")
+		var esq: Skeleton3D = mod._esqueleto
+		var mao_e := BoneAttachment3D.new()
+		mao_e.bone_name = "hand_l"
+		esq.add_child(mao_e)
+		await _esperar(0.3)
+		var guarda: Node3D = _a.modelo_arma.get_node("MaoEsquerda")
+		var antes := mao_e.global_position.distance_to(guarda.global_position)
+		_checar("mão esquerda no guarda-mão antes da recarga (%.2f m)" % antes, antes < 0.08)
+		_a.slot().pente = 5
+		_a.pedir_recarga = true
+		var maior := 0.0
+		for i in int(_a.arma().tempo_recarga * 60.0):
+			await get_tree().physics_frame
+			maior = maxf(maior, mao_e.global_position.distance_to(guarda.global_position))
+		_checar("recarga de fuzil: mão esquerda sai do guarda-mão até a cintura (%.2f m)" % maior, maior > 0.25)
+		await _esperar(0.4)
+		var depois := mao_e.global_position.distance_to(guarda.global_position)
+		_checar("mão esquerda volta ao guarda-mão (%.2f m) e pente cheio (%d)" % [depois, _a.slot().pente],
+			depois < 0.08 and _a.slot().pente == _a.arma().pente)
+		mao_e.queue_free()
+
 	print("RESULTADO: %d falha(s)" % _falhas)
 	get_tree().quit(_falhas)

@@ -73,10 +73,13 @@ Renderizações de diagnóstico conferiram as mãos nas 4 classes de arma (pisto
 metralhadora, sniper), mirando e em prontidão.
 
 ## 4. O que ainda falta / limitações honestas
-- **Animações de fuzil próprias**: o tronco usa a pose de mira de pistola; o IK coloca as mãos
-  na arma, mas uma animação de fuzil (Mixamo, veja o README) deixaria ombros/cotovelos mais
-  naturais. A mão esquerda fecha os dedos, mas a palma não gira para baixo do guarda-mão.
-- **Pendurar em beiradas (shimmy)**: não implementado (hoje a beirada é escalada direto).
+- **Animações de fuzil**: ✅ feitas na v1.2 (mira de fuzil gerada no esqueleto + recarga com a
+  mão esquerda por IK). Ainda são procedurais: uma animação de fuzil capturada (Mixamo) seria
+  mais rica em detalhes de ombro/cotovelo. A palma da mão esquerda não gira para baixo do
+  guarda-mão.
+- **Pendurar em beiradas (shimmy)**: ✅ feito na v1.2 (pendurar, andar de lado, subir, saltar
+  para trás, soltar). A pose das pernas usa a animação parada (não há animação de "pendurado"
+  no pacote CC0); as mãos ficam na borda por IK.
 - **Sons**: sintetizados (funcionais e leves); trocar por sons gravados CC0 é só substituir os
   arquivos em `assets/sons/` mantendo os nomes.
 - **Não testado em celular real** nesta rodada (todos os testes rodaram no PC/servidor).

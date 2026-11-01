@@ -576,6 +576,27 @@ Resumo:
 - **Tiro alinhado ao corpo** (não atravessa o que só a câmera enxerga por cima).
 - **Rede**: recarga, troca de arma e skins dos bots sincronizadas.
 
+### Pendurar na beirada (v1.2)
+- Caindo perto de uma beirada alta (mais de 1,55 m acima dos pés) empurrando o joystick
+  contra a parede: o personagem **agarra e fica pendurado**, mãos na borda por IK.
+- **Joystick para os lados**: anda pela borda (para no fim dela, sem segurar no vazio).
+- **PULAR**: sobe. **Joystick para trás + PULAR**: salta para longe da parede.
+  **DESLIZAR** ou **ROLAR**: solta. Pendurado não dá para atirar (as duas mãos estão na borda).
+- Correndo parede acima, a beirada continua sendo escalada direto (sem pendurar).
+- Bots sobem sozinhos; no multiplayer o estado `pendurado` vai junto com os outros.
+- Números no Inspetor do Jogador (grupo *Escalar beirada*): `altura_min_pendurar`,
+  `velocidade_pendurado`, `tempo_bot_pendurado`.
+
+### Animações de fuzil (v1.2)
+- **Mira de fuzil** (`Rifle_Aim_Down/Neutral/Up`): geradas no próprio esqueleto a partir da
+  mira de pistola: tronco girado ~24° (ombro esquerdo à frente, coronha no ombro direito),
+  leve inclinação para a frente e cabeça compensando para olhar reto. Valem para todas as
+  armas longas; pistolas continuam com a mira de pistola. Ajuste em `modelo_humano.gd`
+  (`GIRO_TRONCO_FUZIL`, `GIRO_PESCOCO_FUZIL`, `GIRO_CABECA_FUZIL`, `INCLINACAO_TRONCO_FUZIL`).
+- **Recarga de fuzil**: a mão esquerda sai do guarda-mão, tira o pente, vai até a cintura,
+  volta, encaixa (com um tapa) e retorna ao guarda-mão; a arma gira um pouco no meio da
+  recarga. Dura exatamente o `tempo_recarga` da arma.
+
 ### Ajustar a empunhadura de uma arma
 1. Abra `data/armas/<arma>.tres`, grupo **Empunhadura (ajuste individual)**:
    `ajuste_posicao` (m: x direita, y cima, z frente), `ajuste_rotacao` (graus),

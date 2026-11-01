@@ -210,6 +210,11 @@ func _physics_process(delta: float) -> void:
 		zoom_ativo = (gatilho and d.zoom > 1.0) or (mira_botao and d.zoom > 1.0)
 	_tempo_luneta = _tempo_luneta + delta if zoom_ativo else 0.0
 
+	# Pendurado na beirada as duas mãos estão na borda: não atira.
+	if dono.get("modo") == Jogador.Modo.PENDURADO:
+		zoom_ativo = false
+		_gatilho_anterior = gatilho
+		return
 	_processar_gatilho(d, s)
 	_gatilho_anterior = gatilho
 	dispersao_atual = _calcular_dispersao(d)

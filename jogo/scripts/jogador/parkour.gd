@@ -3,6 +3,7 @@ class_name ControladorParkour
 ## Parkour do personagem (separado do Jogador para o código ficar organizado):
 ##   - correr na parede (wall run), pular da parede, de parede a parede
 ##   - correr parede acima e agarrar/subir beiradas
+##   - ficar pendurado em beiradas altas (andar de lado, subir, saltar, soltar)
 ##   - transpor obstáculos baixos correndo (vault)
 ## Tudo usa colisão real do cenário (raios e teste de espaço livre): o personagem
 ## não atravessa nem "flutua" em paredes que não existem.
@@ -14,6 +15,16 @@ var transpondo := false
 var _pico := 0.0
 var _vel_saida := Vector3.ZERO
 var _duracao_transpor := 0.35
+# Pendurado: ponto do topo da borda (onde as mãos seguram) e encaixe suave
+var _topo_beirada := Vector3.ZERO
+var _pos_pendurar := Vector3.ZERO
+var _inicio_pendurar := Vector3.ZERO
+## Impede agarrar a mesma beirada logo depois de soltar.
+var recarga_pendurar := 0.0
+## Velocidade de lado pendurado (-1..1, para a animação/IK das mãos).
+var lado_pendurado := 0.0
+## Duração da escalada atual (subir de pendurado demora mais: o corpo sobe 2 m).
+var duracao_escalada_atual := 0.32
 
 
 func _init(dono: Jogador) -> void:
@@ -107,7 +118,7 @@ func modo_parede(direcao: Vector3, delta: float) -> void:
 func modo_subindo(direcao: Vector3, delta: float) -> void:
 	j.velocity = -j._normal_parede * 1.0 + Vector3.UP * j.velocidade_subida_parede * (1.0 - j._tempo_modo / j.duracao_subida_parede * 0.4)
 	j.move_and_slide()
-	if tentar_beirada(-j._normal_parede):
+	if tentar_beirada(-j._normal_parede, false):  # subindo a parede: sobe direto
 		return
 	# Pulo durante a subida: salto para trás (vira de costas para a parede).
 	if j._buffer_pulo > 0.0 and j._tempo_modo > 0.08:
@@ -139,28 +150,169 @@ func raio_parede(dir: Vector3, alcance: float) -> Dictionary:
 # =========================================================================
 
 ## Se houver uma beirada ao alcance à frente, começa a escalar. Devolve true se começou.
-func tentar_beirada(direcao: Vector3) -> bool:
+## Com "permitir_pendurar", uma beirada alta agarrada já caindo deixa o personagem
+## pendurado (em vez de subir direto).
+func tentar_beirada(direcao: Vector3, permitir_pendurar := true) -> bool:
 	var frente := Vector3(direcao.x, 0, direcao.z).normalized()
 	var parede := raio_parede(frente, j.RAIO + 0.45)
 	if not parede or frente.dot(-parede.normal) < 0.6:
 		return false
-	# Raio de cima para baixo, logo depois da borda da parede.
-	var ponto: Vector3 = parede.position - parede.normal * 0.45
-	var topo_busca := j.global_position.y + j.alcance_beirada + 0.1
-	var q := PhysicsRayQueryParameters3D.create(
-		Vector3(ponto.x, topo_busca, ponto.z), Vector3(ponto.x, j.global_position.y + 0.4, ponto.z), 1)
-	q.exclude = [j.get_rid()]
-	var chao := j.get_world_3d().direct_space_state.intersect_ray(q)
-	if not chao or chao.normal.y < 0.75:
+	var chao := _topo_da_parede(parede.position, parede.normal, j.global_position.y + j.alcance_beirada + 0.1)
+	if chao.is_empty():
 		return false
 	var destino: Vector3 = chao.position + Vector3.UP * 0.05
+	var altura: float = chao.position.y - j.global_position.y
+	if permitir_pendurar and recarga_pendurar <= 0.0 and j.velocity.y < 0.5 \
+			and altura > j.altura_min_pendurar:
+		return _iniciar_pendurar(parede.position, parede.normal, chao.position)
 	if not j._espaco_livre(destino, j.ALTURA_EM_PE):
 		return false
 	j._escalada_inicio = j.global_position
 	j._escalada_fim = destino
+	duracao_escalada_atual = j.duracao_escalada
 	j.velocity = Vector3.ZERO
 	j._mudar_modo(Jogador.Modo.ESCALANDO)
 	return true
+
+
+## Raio de cima para baixo logo depois da borda da parede: acha o chão de cima.
+func _topo_da_parede(ponto_parede: Vector3, normal: Vector3, y_busca: float) -> Dictionary:
+	var ponto: Vector3 = ponto_parede - normal * 0.45
+	var q := PhysicsRayQueryParameters3D.create(
+		Vector3(ponto.x, y_busca, ponto.z), Vector3(ponto.x, j.global_position.y + 0.4, ponto.z), 1)
+	q.exclude = [j.get_rid()]
+	var chao := j.get_world_3d().direct_space_state.intersect_ray(q)
+	if not chao or chao.normal.y < 0.75:
+		return {}
+	return chao
+
+
+# =========================================================================
+#  PENDURADO NA BEIRADA
+# =========================================================================
+
+## Altura dos pés abaixo do topo da beirada quando pendurado (braços esticados).
+const PES_ABAIXO_DA_BORDA := 1.74
+
+
+func _iniciar_pendurar(ponto_parede: Vector3, normal: Vector3, topo: Vector3) -> bool:
+	var n := Vector3(normal.x, 0, normal.z).normalized()
+	var pos := Vector3(ponto_parede.x, topo.y - PES_ABAIXO_DA_BORDA, ponto_parede.z) + n * (j.RAIO + 0.06)
+	# Precisa caber o corpo ali (sem atravessar chão nem teto).
+	if not j._espaco_livre(pos, j.ALTURA_EM_PE):
+		return false
+	j._normal_parede = n
+	_topo_beirada = Vector3(ponto_parede.x, topo.y, ponto_parede.z)
+	_inicio_pendurar = j.global_position
+	_pos_pendurar = pos
+	lado_pendurado = 0.0
+	j.velocity = Vector3.ZERO
+	j._buffer_pulo = 0.0
+	j._pulo_duplo_disponivel = true
+	j._mudar_modo(Jogador.Modo.PENDURADO)
+	j._som("aterrissar", -12.0)
+	return true
+
+
+## Ponto onde as mãos seguram a borda (para o IK do modelo), no espaço global.
+func ponto_mao_beirada(lado: float) -> Vector3:
+	var direita := (-j._normal_parede).cross(Vector3.UP).normalized()
+	return _topo_beirada + direita * (0.2 * lado) + j._normal_parede * 0.04
+
+
+func modo_pendurado(direcao: Vector3, delta: float) -> void:
+	# Encaixe suave na posição pendurada (0,12 s), sem gravidade.
+	var k := clampf(j._tempo_modo / 0.12, 0.0, 1.0)
+	j.global_position = _inicio_pendurar.lerp(_pos_pendurar, ease(k, 0.5))
+	j.velocity = Vector3.ZERO
+	var n := j._normal_parede
+	var direita := (-n).cross(Vector3.UP).normalized()
+
+	# Ações (depois do encaixe, para não soltar sem querer com o mesmo toque)
+	if k >= 1.0:
+		var pulo := j._buffer_pulo > 0.0
+		if not j.controlado_localmente and j._tempo_modo > j.tempo_bot_pendurado:
+			pulo = true  # bots sobem sozinhos
+		if pulo:
+			j._buffer_pulo = 0.0
+			if direcao.dot(n) > 0.5:
+				_saltar_da_beirada()
+			else:
+				_subir_da_beirada()
+			return
+		if j._buffer_deslizar > 0.0 or j._buffer_rolar > 0.0:
+			j._buffer_deslizar = 0.0
+			j._buffer_rolar = 0.0
+			_soltar_beirada()
+			return
+
+	# Andar de lado pela borda (só a parte do joystick ao longo da parede).
+	var lado := direcao.dot(direita)
+	lado_pendurado = move_toward(lado_pendurado, signf(lado) if absf(lado) > 0.3 else 0.0, delta * 8.0)
+	if k >= 1.0 and absf(lado) > 0.3:
+		var passo := direita * signf(lado) * j.velocidade_pendurado * delta
+		var nova := _pos_pendurar + passo
+		# a mão da frente também precisa caber na borda (não segura no vazio)
+		if _beirada_continua(nova) and _beirada_continua(nova + direita * signf(lado) * 0.24):
+			_pos_pendurar = nova
+			_inicio_pendurar = nova
+			_topo_beirada += passo
+			j.global_position = nova
+			j.velocity = passo / maxf(delta, 0.001)  # só informativo (animação e rede)
+		else:
+			lado_pendurado = 0.0
+
+
+## A borda continua nesta posição? (parede na frente, topo na mesma altura, corpo cabe)
+func _beirada_continua(pos: Vector3) -> bool:
+	var esp := j.get_world_3d().direct_space_state
+	var n := j._normal_parede
+	var origem := pos + Vector3.UP * 1.0
+	var q := PhysicsRayQueryParameters3D.create(origem, origem - n * (j.RAIO + 0.4), 1)
+	q.exclude = [j.get_rid()]
+	var parede := esp.intersect_ray(q)
+	if parede.is_empty() or absf(parede.normal.y) > 0.3:
+		return false
+	var p: Vector3 = parede.position - n * 0.25
+	var q2 := PhysicsRayQueryParameters3D.create(
+		Vector3(p.x, _topo_beirada.y + 0.4, p.z), Vector3(p.x, _topo_beirada.y - 0.4, p.z), 1)
+	q2.exclude = [j.get_rid()]
+	var topo := esp.intersect_ray(q2)
+	if topo.is_empty() or topo.normal.y < 0.75 or absf(topo.position.y - _topo_beirada.y) > 0.15:
+		return false
+	return j._espaco_livre(pos, j.ALTURA_EM_PE)
+
+
+func _subir_da_beirada() -> void:
+	var destino := Vector3(_topo_beirada.x, _topo_beirada.y + 0.05, _topo_beirada.z) - j._normal_parede * 0.45
+	if not j._espaco_livre(destino, j.ALTURA_EM_PE):
+		return  # sem espaço em cima (teto baixo): continua pendurado
+	j._escalada_inicio = j.global_position
+	j._escalada_fim = destino
+	duracao_escalada_atual = j.duracao_escalada * 1.7
+	j.velocity = Vector3.ZERO
+	j._mudar_modo(Jogador.Modo.ESCALANDO)
+	j._som("pulo", -8.0)
+
+
+func _saltar_da_beirada() -> void:
+	j.velocity = j._normal_parede * j.pulo_parede_lateral + Vector3.UP * j.pulo_parede_vertical * 0.9
+	j._recarga_parede = 0.2
+	j._controle_reduzido = 0.3
+	j._pulando = true
+	j._tempo_fora_do_chao = j.tempo_coyote + 1.0
+	recarga_pendurar = 0.4
+	j._mudar_modo(Jogador.Modo.NORMAL)
+	j._som("pulo", -6.0)
+
+
+func _soltar_beirada() -> void:
+	j.velocity = j._normal_parede * 1.2
+	j._tempo_fora_do_chao = j.tempo_coyote + 1.0
+	j._pulando = false
+	recarga_pendurar = 0.6
+	j._recarga_parede = 0.4
+	j._mudar_modo(Jogador.Modo.NORMAL)
 
 
 # =========================================================================
@@ -253,7 +405,7 @@ func modo_escalando(_delta: float) -> void:
 		_modo_transpondo()
 		return
 	# Movimento guiado em "L": primeiro sobe, depois avança por cima da borda.
-	var t := clampf(j._tempo_modo / j.duracao_escalada, 0.0, 1.0)
+	var t := clampf(j._tempo_modo / duracao_escalada_atual, 0.0, 1.0)
 	var sobe := ease(clampf(t / 0.6, 0.0, 1.0), 0.6)
 	var avanca := ease(clampf((t - 0.35) / 0.65, 0.0, 1.0), 1.6)
 	var p := j._escalada_inicio

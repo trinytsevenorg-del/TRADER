@@ -47,6 +47,20 @@ func _preparar(pos: Vector3, yaw: float) -> void:
 	await _esperar(0.3)
 
 
+## Coloca o personagem caindo de frente para a caixa de 3 m e espera agarrar.
+func _pendurar() -> void:
+	Controles.joystick = Vector2.ZERO
+	_j.teleportar(Vector3(2.0, 1.4, -6.45), 0.0)
+	_j.velocity.y = -3.0
+	Controles.joystick = Vector2(0, -1)
+	for i in 40:
+		await get_tree().physics_frame
+		if _j.estado == &"pendurado":
+			break
+	Controles.joystick = Vector2.ZERO
+	await _esperar(0.25)
+
+
 func _rodar() -> void:
 	await _esperar(0.4)
 
@@ -212,6 +226,40 @@ func _rodar() -> void:
 			viu_aterrissar = true
 	_checar("queda alta: recuperação na aterrissagem", viu_aterrissar)
 	_checar("depois da recuperação volta ao normal (%s)" % _j.estado, _j.estado == &"parado")
+
+	# 10) Pendurar na beirada (caixa de 3 m em x 1..3, z -9..-7): agarrar caindo
+	await _pendurar()
+	_checar("agarrou a beirada alta caindo e ficou pendurado (%s, y=%.2f)" % [_j.estado, _j.global_position.y],
+		_j.estado == &"pendurado" and absf(_j.global_position.y - 1.26) < 0.1)
+	await _esperar(0.5)
+	_checar("pendurado não cai (y=%.2f)" % _j.global_position.y, _j.estado == &"pendurado" and absf(_j.global_position.y - 1.26) < 0.1)
+	# Andar de lado pela borda (para a direita = +x), parando no fim da caixa
+	Controles.joystick = Vector2(1, 0)
+	await _esperar(0.4)
+	_checar("anda de lado pendurado (x=%.2f)" % _j.global_position.x, _j.estado == &"pendurado" and _j.global_position.x > 2.4)
+	await _esperar(1.0)
+	_checar("para no fim da beirada sem cair (x=%.2f, %s)" % [_j.global_position.x, _j.estado],
+		_j.estado == &"pendurado" and _j.global_position.x < 2.8)
+	Controles.joystick = Vector2.ZERO
+	await _esperar(0.1)
+	await _apertar("pular")
+	var ym3 := await _altura_max(1.0)
+	_checar("PULAR pendurado sobe na beirada (y=%.2f)" % ym3, ym3 > 2.9)
+	# Soltar com DESLIZAR: cai e não agarra de novo
+	await _pendurar()
+	await _apertar("deslizar")
+	await _esperar(0.8)
+	_checar("DESLIZAR solta a beirada e cai (y=%.2f, %s)" % [_j.global_position.y, _j.estado],
+		_j.global_position.y < 0.3 and _j.estado != &"pendurado")
+	# Joystick para trás + PULAR: salta para longe da parede
+	await _pendurar()
+	Controles.joystick = Vector2(0, 1)
+	await _apertar("pular")
+	await _esperar(0.1)
+	_checar("trás + PULAR salta para longe da parede (vz=%.1f, vy=%.1f)" % [_j.velocity.z, _j.velocity.y],
+		_j.estado != &"pendurado" and _j.velocity.z > 3.0 and _j.velocity.y > 2.0)
+	Controles.joystick = Vector2.ZERO
+	await _esperar(1.5)
 
 	print("RESULTADO: %d falha(s)" % _falhas)
 	get_tree().quit(_falhas)

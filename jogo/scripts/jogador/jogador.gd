@@ -7,6 +7,7 @@ class_name Jogador
 ##   PAREDE      correndo/deslizando pela parede (wall run)
 ##   SUBINDO     correndo parede acima (de frente para a parede)
 ##   ESCALANDO   subindo numa beirada (movimento guiado, sem física)
+##   PENDURADO   agarrado numa beirada alta (anda de lado, sobe, salta ou solta)
 ##   ROLANDO     cambalhota com invencibilidade curta
 ##   DESLIZANDO  deslize no chão depois de correr
 ##
@@ -15,6 +16,8 @@ class_name Jogador
 ##    escorregando devagar para baixo. PULAR de novo: salta para longe da parede.
 ##  - No ar, DE FRENTE para a parede, aperte PULAR: corre parede acima.
 ##  - Beiradas ao alcance das mãos são agarradas e escaladas sozinhas.
+##  - Beirada alta agarrada já caindo: fica PENDURADO. Joystick anda de lado pela
+##    borda, PULAR sobe, joystick para trás + PULAR salta para longe, DESLIZAR/ROLAR solta.
 ##  - Sem parede por perto, PULAR no ar = pulo duplo.
 ##  - ROLAR: cambalhota rápida (0,3 s invencível). No ar, fica guardada e sai ao aterrissar.
 ##  - DESLIZAR correndo: desliza no chão. Cair de alto correndo também desliza sozinho.
@@ -25,7 +28,7 @@ signal estado_mudou(novo: StringName)
 signal morreu(atacante: Node)
 signal renasceu
 
-enum Modo { NORMAL, PAREDE, SUBINDO, ESCALANDO, ROLANDO, DESLIZANDO, MORTO }
+enum Modo { NORMAL, PAREDE, SUBINDO, ESCALANDO, ROLANDO, DESLIZANDO, MORTO, PENDURADO }
 ## LOCAL = você (botões e câmera). BOT = IA (ai/cerebro_bot.gd dá os comandos).
 ## REMOTO = personagem de outro aparelho: só mostra o que chega pela rede (etapa 8).
 enum Tipo { LOCAL, BOT, REMOTO }
@@ -66,6 +69,12 @@ enum Tipo { LOCAL, BOT, REMOTO }
 ## Altura máxima da beirada (acima dos pés) que dá para agarrar no ar.
 @export var alcance_beirada := 2.3
 @export var duracao_escalada := 0.32
+## Beirada mais alta que isto (acima dos pés), agarrada já caindo: fica pendurado.
+@export var altura_min_pendurar := 1.55
+## Velocidade andando de lado pendurado na beirada (m/s).
+@export var velocidade_pendurado := 1.8
+## Bots sobem sozinhos depois de ficar pendurados este tempo.
+@export var tempo_bot_pendurado := 0.35
 
 @export_group("Rolamento")
 ## Velocidade no começo do rolamento (vai diminuindo suave até a de saída).
@@ -335,6 +344,7 @@ func _physics_process(delta: float) -> void:
 	_tempo_modo += delta
 	_recarga_rolar -= delta
 	_recarga_parede -= delta
+	parkour.recarga_pendurar -= delta
 	_controle_reduzido -= delta
 	if controlado_localmente and Input.is_action_just_pressed("pular"):
 		_buffer_pulo = tempo_buffer_pulo
@@ -361,6 +371,8 @@ func _physics_process(delta: float) -> void:
 			parkour.modo_subindo(direcao, delta)
 		Modo.ESCALANDO:
 			parkour.modo_escalando(delta)
+		Modo.PENDURADO:
+			parkour.modo_pendurado(direcao, delta)
 		Modo.ROLANDO:
 			_modo_rolando(direcao, delta)
 		Modo.DESLIZANDO:
@@ -629,8 +641,8 @@ func _girar_modelo(direcao: Vector3, delta: float) -> void:
 			# Inclina o corpo para longe da parede (pés na parede).
 			var lado_parede := signf(_direcao_parede.cross(Vector3.UP).dot(-_normal_parede))
 			alvo_incl.y = -0.45 * lado_parede
-		Modo.SUBINDO, Modo.ESCALANDO:
-			alvo_yaw = atan2(_normal_parede.x, _normal_parede.z) if modo == Modo.SUBINDO else visual.rotation.y
+		Modo.SUBINDO, Modo.ESCALANDO, Modo.PENDURADO:
+			alvo_yaw = atan2(_normal_parede.x, _normal_parede.z) if modo != Modo.ESCALANDO else visual.rotation.y
 		Modo.ROLANDO:
 			alvo_yaw = atan2(-_dir_acao.x, -_dir_acao.z)
 		Modo.DESLIZANDO:
@@ -656,6 +668,7 @@ func _atualizar_estado() -> void:
 		Modo.PAREDE: novo = &"parede"
 		Modo.SUBINDO: novo = &"subindo_parede"
 		Modo.ESCALANDO: novo = &"transpondo" if parkour.transpondo else &"escalando"
+		Modo.PENDURADO: novo = &"pendurado"
 		Modo.ROLANDO: novo = &"rolando"
 		Modo.DESLIZANDO: novo = &"deslizando"
 		Modo.MORTO: novo = &"morto"
@@ -675,7 +688,7 @@ func _atualizar_estado() -> void:
 		modelo.atualizar_animacao(estado, vel_h / velocidade_corrida, mirando)
 	if modelo and modelo.has_method("definir_mira"):
 		# Tronco mira junto com a câmera (menos no rolamento e na escalada).
-		var pode := modo != Modo.ROLANDO and modo != Modo.ESCALANDO
+		var pode := modo != Modo.ROLANDO and modo != Modo.ESCALANDO and modo != Modo.PENDURADO
 		if controlado_localmente and mirando:
 			var alvo := camera_rig.ponto_mirado(80.0, 1)
 			var olhos := global_position + Vector3.UP * 1.45

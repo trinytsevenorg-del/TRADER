@@ -14,6 +14,14 @@ extends Node3D
 ##
 ## Ou seja: as pernas continuam correndo/pulando enquanto o tronco e os braços
 ## miram para onde a câmera aponta (atirar correndo, no ar, na parede...).
+##
+## Armas longas (fuzis, submetralhadoras, escopetas, snipers) usam a mira de FUZIL:
+## Rifle_Aim_Down/Neutral/Up, geradas aqui mesmo a partir da mira de pistola, com o
+## tronco girado (ombro esquerdo à frente, coronha no ombro direito) e a cabeça
+## compensando para continuar olhando para a frente. A recarga de fuzil é feita por
+## IK: a mão esquerda sai do guarda-mão, tira o pente, vai até a cintura e volta.
+##
+## Pendurado na beirada ("pendurado"): as duas mãos vão até a borda por IK.
 ## As animações vêm de UMA biblioteca compartilhada (assets/animations/animacoes_humanas.glb).
 ##
 ## Para trocar o modelo: aponte "cena_modelo" para outro .glb com o MESMO esqueleto
@@ -32,13 +40,13 @@ const ANIM := {
 	"correr": "Sprint", "pulo": "Jump", "parede": "Sprint", "subindo_parede": "NinjaJump_Start",
 	"escalar": "ClimbUp_1m", "rolar": "Roll", "deslizar": "Slide", "morrer": "Death01",
 	"aterrissar": "Jump_Land", "transpor": "NinjaJump_Start",
-	"tiro": "Pistol_Shoot", "recarga": "Pistol_Reload",
+	"tiro": "Pistol_Shoot", "recarga": "Pistol_Reload", "pendurado": "Idle",
 }
 ## Tempo de transição entre animações (crossfade), em segundos.
 const MISTURA := 0.15
 ## Animações de locomoção usadas (nomes da biblioteca).
 const LOCOMOCAO := ["parado", "parado_arma", "andar", "trote", "correr", "pulo", "parede",
-	"subindo_parede", "escalar", "rolar", "deslizar", "morrer", "aterrissar", "transpor"]
+	"subindo_parede", "escalar", "rolar", "deslizar", "morrer", "aterrissar", "transpor", "pendurado"]
 ## Ossos que NÃO entram na mira (ficam com a locomoção).
 ## Aceita os nomes do esqueleto atual (estilo UE) e os do perfil humanoide da Godot
 ## (usado quando você reprojeta animações do Mixamo no importador; veja o README).
@@ -53,7 +61,21 @@ const OSSO_PEITO := ["spine_03", "UpperChest", "Chest"]
 const BRACO_D := [["upperarm_r", "RightUpperArm"], ["lowerarm_r", "RightLowerArm"], ["hand_r", "RightHand"]]
 const BRACO_E := [["upperarm_l", "LeftUpperArm"], ["lowerarm_l", "LeftLowerArm"], ["hand_l", "LeftHand"]]
 ## Estados em que as mãos soltam a arma (IK desliga suave).
-const ESTADOS_SEM_IK := [&"rolando", &"escalando", &"subindo_parede", &"morto"]
+const ESTADOS_SEM_IK := [&"rolando", &"escalando", &"subindo_parede", &"morto", &"pendurado"]
+## Mira de fuzil: quanto o tronco gira (ombro esquerdo à frente) e quanto o
+## pescoço/cabeça compensam, em radianos. Gerada a partir da mira de pistola.
+const GIRO_TRONCO_FUZIL := 0.42
+const GIRO_PESCOCO_FUZIL := 0.26
+const GIRO_CABECA_FUZIL := 0.14
+const INCLINACAO_TRONCO_FUZIL := 0.08
+const MIRAS := {
+	"pistola": ["Pistol_Aim_Down", "Pistol_Aim_Neutral", "Pistol_Aim_Up"],
+	"fuzil": ["Rifle_Aim_Down", "Rifle_Aim_Neutral", "Rifle_Aim_Up"],
+}
+## Pendurado: mãos na borda (espaço do personagem: x direita, y cima, -z frente)
+## e quanto o corpo encosta na parede (a cápsula de colisão é mais larga que o corpo).
+const MAOS_BEIRADA := Vector3(0.23, 1.7, -0.4)
+const AVANCO_PENDURADO := 0.17
 
 
 ## Primeiro osso que existir na lista (para aceitar esqueletos com nomes diferentes).
@@ -108,6 +130,20 @@ var _pitch_mira_rad := 0.0
 var _ajuste_rot_arma := Basis.IDENTITY
 var _escala_arma := 1.0
 var _angulo_baixo := 15.0
+# Mira de fuzil (BlendSpace com nomes trocáveis) e recarga de fuzil por IK
+var _pontos_mira: Array[AnimationNodeAnimation] = []
+var _recarga_t := 0.0
+var _recarga_total := 0.0
+var _alvo_mao_e: Marker3D        # alvo da mão esquerda na recarga
+var _alvo_arma_d: Node3D
+var _alvo_arma_e: Node3D
+# Pendurado na beirada
+var _pendurado := false
+var _peso_pendurado := 0.0
+var _alvo_beirada_d: Marker3D
+var _alvo_beirada_e: Marker3D
+var _fase_pendurado := 0.0
+var _fator_vel := 0.0
 
 
 func _ready() -> void:
@@ -155,6 +191,7 @@ func _montar_arvore() -> void:
 	_arvore.name = "AnimationTree"
 	_modelo.add_child(_arvore)
 	_arvore.root_node = NodePath("..")
+	_gerar_mira_fuzil()
 	_arvore.add_animation_library("", _obter_biblioteca())
 
 	var bt := AnimationNodeBlendTree.new()
@@ -174,11 +211,14 @@ func _montar_arvore() -> void:
 	bt.connect_node("vel", 0, "loco")
 
 	# Mira: olha para baixo / reto / para cima conforme a câmera.
+	# (os nomes são trocados para Rifle_Aim_* ao segurar uma arma longa)
 	var bs := AnimationNodeBlendSpace1D.new()
-	for par in [["Pistol_Aim_Down", -1.0], ["Pistol_Aim_Neutral", 0.0], ["Pistol_Aim_Up", 1.0]]:
+	_pontos_mira.clear()
+	for par in [[MIRAS.pistola[0], -1.0], [MIRAS.pistola[1], 0.0], [MIRAS.pistola[2], 1.0]]:
 		var an := AnimationNodeAnimation.new()
 		an.animation = par[0]
 		bs.add_blend_point(an, par[1])
+		_pontos_mira.append(an)
 	bt.add_node("mira", bs, Vector2(400, 300))
 
 	# Mistura só no tronco/braços/cabeça.
@@ -218,6 +258,48 @@ func _montar_arvore() -> void:
 	_arvore.active = true
 
 
+## Cria (uma vez, na biblioteca compartilhada) a mira de fuzil a partir da mira de
+## pistola: gira o tronco no osso spine_02, inclina um pouco para a frente e
+## compensa no pescoço/cabeça. Os braços não importam: o IK põe as mãos na arma.
+func _gerar_mira_fuzil() -> void:
+	var lib := _obter_biblioteca()
+	if lib.has_animation(MIRAS.fuzil[1]):
+		return
+	var ajustes := [
+		[["spine_02", "Spine"], -GIRO_TRONCO_FUZIL, INCLINACAO_TRONCO_FUZIL],
+		[["neck_01", "Neck"], GIRO_PESCOCO_FUZIL, 0.0],
+		[["Head", "head"], GIRO_CABECA_FUZIL, -INCLINACAO_TRONCO_FUZIL * 0.5],
+	]
+	var prefixo := "%s:" % str(_modelo.get_path_to(_esqueleto))
+	for i in 3:
+		var base := lib.get_animation(MIRAS.pistola[i])
+		if base == null:
+			return
+		var anim: Animation = base.duplicate(true)
+		for aj in ajustes:
+			var osso := _osso(aj[0])
+			if osso < 0:
+				continue
+			var trilha := anim.find_track(NodePath(prefixo + _esqueleto.get_bone_name(osso)), Animation.TYPE_ROTATION_3D)
+			if trilha < 0:
+				continue
+			# Rotação desejada no espaço do esqueleto (em volta do eixo vertical e do
+			# eixo lateral), convertida para o espaço local do osso: L' = L * G⁻¹ R G
+			var g := _pose_global_na_animacao(base, osso).basis.orthonormalized()
+			var r := Basis(Vector3.UP, aj[1]) * Basis(Vector3.RIGHT, aj[2])
+			var delta := Quaternion(g.inverse() * r * g).normalized()
+			for k in anim.track_get_key_count(trilha):
+				var q: Quaternion = anim.track_get_key_value(trilha, k)
+				anim.track_set_key_value(trilha, k, (q * delta).normalized())
+		lib.add_animation(MIRAS.fuzil[i], anim)
+
+
+## Mira de pistola ou de fuzil no BlendSpace (sem remontar a árvore).
+func _usar_mira(tipo: String) -> void:
+	for i in _pontos_mira.size():
+		_pontos_mira[i].animation = MIRAS[tipo][i]
+
+
 func _filtrar_tronco(no: AnimationNode) -> void:
 	no.filter_enabled = true
 	var prefixo := str(_modelo.get_path_to(_esqueleto))
@@ -234,6 +316,10 @@ func tocar_tiro() -> void:
 
 ## Recarga no tronco, na duração da recarga da arma.
 func tocar_recarga(tempo: float) -> void:
+	_recarga_total = maxf(tempo, 0.1)
+	_recarga_t = _recarga_total
+	if _arma_longa:
+		return  # fuzil: recarga por IK da mão esquerda (_atualizar_recarga_fuzil)
 	var dur := _obter_biblioteca().get_animation(ANIM.recarga).length
 	_arvore.set("parameters/vel_recarga/scale", dur / maxf(tempo, 0.1))
 	_arvore.set("parameters/recarga/request", AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)
@@ -250,6 +336,7 @@ func _process(delta: float) -> void:
 	_peso_mira = move_toward(_peso_mira, _peso_mira_alvo, delta * 8.0)
 	_arvore.set("parameters/mistura/blend_amount", _peso_mira)
 	_atualizar_arma(delta)
+	_atualizar_pendurado(delta)
 
 
 ## Posição da arma (pronto baixo <-> mirando, animação de troca) e força do IK.
@@ -267,17 +354,98 @@ func _atualizar_arma(delta: float) -> void:
 			var mao_local: Vector3 = (_arma.get_node("Mao") as Node3D).position
 			var mao_g := _arma.global_transform * mao_local
 			var pitch := lerpf(-deg_to_rad(_angulo_baixo), _pitch_mira_rad, _peso_mira)
+			# Recarga: a arma gira um pouco (janela do pente para cima/fora) e sobe.
+			var k_rec := _fase_recarga()
+			var giro_rec := Basis(Vector3(0, 0, 1), -0.45 * sin(PI * k_rec)) * Basis(Vector3.RIGHT, 0.18 * sin(PI * k_rec))
 			var base_g := _esqueleto.global_basis.orthonormalized() * Basis(Vector3.UP, PI) \
-				* Basis(Vector3.RIGHT, pitch) * _ajuste_rot_arma * abaixar.basis
+				* Basis(Vector3.RIGHT, pitch) * giro_rec * _ajuste_rot_arma * abaixar.basis
 			base_g = base_g.scaled(Vector3.ONE * _escala_arma)
 			_arma.global_transform = Transform3D(base_g, mao_g + abaixar.origin - base_g * mao_local)
+			_atualizar_recarga_fuzil()
 		else:
 			_arma.transform = _base_arma_mao * abaixar
+		_arma.visible = _peso_pendurado < 0.5  # pendurado: arma "nas costas"
+	_recarga_t = maxf(_recarga_t - delta, 0.0)
+	if _pendurado or _peso_pendurado > 0.0:
+		return  # IK das mãos fica com a beirada (_atualizar_pendurado)
 	var alvo := 1.0 if (_arma_longa and _ik_permitido and _arma != null) else 0.0
 	for ik in [_ik_d, _ik_e]:
 		if ik:
 			ik.influence = move_toward(ik.influence, alvo, delta * 6.0)
 			ik.active = ik.influence > 0.001
+
+
+## Progresso da recarga de fuzil (0..1; 0 = sem recarga).
+func _fase_recarga() -> float:
+	if not _arma_longa or _recarga_total <= 0.0 or _recarga_t <= 0.0:
+		return 0.0
+	return 1.0 - _recarga_t / _recarga_total
+
+
+## Recarga de fuzil: caminho da mão esquerda (guarda-mão -> pente -> cintura ->
+## pente -> tapa no pente -> guarda-mão). O IK leva a mão até o alvo.
+func _atualizar_recarga_fuzil() -> void:
+	if _ik_e == null or _alvo_mao_e == null:
+		return
+	var f := _fase_recarga()
+	if f <= 0.0 or _alvo_arma_e == null or not is_instance_valid(_alvo_arma_e):
+		if _ik_e.alvo == _alvo_mao_e:
+			_ik_e.alvo = _alvo_arma_e
+		return
+	var guarda: Vector3 = _alvo_arma_e.global_position
+	var mao_d: Vector3 = (_arma.get_node("Mao") as Node3D).global_position
+	var pente := mao_d.lerp(guarda, 0.4) - _arma.global_basis.orthonormalized().y * 0.1
+	var xf := global_transform.orthonormalized()
+	var cintura := xf * Vector3(-0.16, 0.98, -0.12)  # bolsa do pente, lado esquerdo
+	var p: Vector3
+	if f < 0.15:
+		p = guarda.lerp(pente, smoothstep(0.0, 0.15, f))
+	elif f < 0.4:
+		p = pente.lerp(cintura, smoothstep(0.15, 0.4, f))
+	elif f < 0.52:
+		p = cintura
+	elif f < 0.75:
+		p = cintura.lerp(pente, smoothstep(0.52, 0.75, f))
+	elif f < 0.85:
+		p = pente + xf.basis.y * 0.04 * sin(PI * (f - 0.75) / 0.1)  # tapa no pente
+	else:
+		p = pente.lerp(guarda, smoothstep(0.85, 1.0, f))
+	_alvo_mao_e.global_position = p
+	if not _pendurado:
+		_ik_e.alvo = _alvo_mao_e
+
+
+## Pendurado na beirada: mãos na borda por IK, corpo encostado na parede e um
+## leve balanço; andando de lado, as mãos alternam (uma vai, a outra segue).
+func _atualizar_pendurado(delta: float) -> void:
+	if _ik_d == null or _alvo_beirada_d == null:
+		return
+	_peso_pendurado = move_toward(_peso_pendurado, 1.0 if _pendurado else 0.0, delta * 8.0)
+	_modelo.position.z = -AVANCO_PENDURADO * _peso_pendurado
+	if _peso_pendurado <= 0.0:
+		if _ik_d.alvo == _alvo_beirada_d:
+			_ik_d.alvo = _alvo_arma_d
+			_ik_e.alvo = _alvo_arma_e
+			_ik_d.girar_mao = true
+			_ik_d.ajuste_mao = _calibracao_mao.affine_inverse()
+			_ik_d.influence = 0.0
+			_ik_e.influence = 0.0
+		return
+	var andando := _fator_vel > 0.02 and _pendurado
+	if andando:
+		_fase_pendurado += delta * 7.0
+	var xf := global_transform.orthonormalized()
+	var levanta_d := maxf(sin(_fase_pendurado), 0.0) * 0.06 if andando else 0.0
+	var levanta_e := maxf(-sin(_fase_pendurado), 0.0) * 0.06 if andando else 0.0
+	_alvo_beirada_d.global_position = xf * Vector3(MAOS_BEIRADA.x, MAOS_BEIRADA.y + levanta_d, MAOS_BEIRADA.z)
+	_alvo_beirada_e.global_position = xf * Vector3(-MAOS_BEIRADA.x, MAOS_BEIRADA.y + levanta_e, MAOS_BEIRADA.z)
+	_ik_d.alvo = _alvo_beirada_d
+	_ik_e.alvo = _alvo_beirada_e
+	_ik_d.girar_mao = false
+	_ik_d.ajuste_mao = Transform3D.IDENTITY  # o ajuste é da empunhadura da arma
+	for ik in [_ik_d, _ik_e]:
+		ik.influence = _peso_pendurado
+		ik.active = ik.influence > 0.001
 
 
 ## Arma descendo e subindo ao trocar (dura o tempo de equipar da arma).
@@ -292,6 +460,8 @@ func animar_troca(tempo: float) -> void:
 ##  dá para colocar animações do Mixamo no lugar; veja o README.)
 func atualizar_animacao(estado: StringName, fator_vel: float, mirando: bool) -> void:
 	_ik_permitido = not ESTADOS_SEM_IK.has(estado)
+	_pendurado = estado == &"pendurado"
+	_fator_vel = fator_vel
 	match estado:
 		&"correndo":
 			if fator_vel < 0.35:
@@ -318,6 +488,8 @@ func atualizar_animacao(estado: StringName, fator_vel: float, mirando: bool) -> 
 			_tocar("transpor", 1.6)
 		&"aterrissando":
 			_tocar("aterrissar", 2.2)
+		&"pendurado":
+			_tocar("pendurado", 0.4)
 		_:
 			_tocar("parado_arma" if (mirando or _arma != null) else "parado")
 
@@ -358,8 +530,12 @@ func _calibrar_mao() -> void:
 	var peito := _osso(OSSO_PEITO)
 	var ombro := _osso(BRACO_D[0])
 	if peito >= 0 and ombro >= 0:
-		_pose_peito_mira = _pose_global_na_animacao(anim, peito)
-		_ombro_d_mira = _pose_global_na_animacao(anim, ombro).origin
+		# Armas longas: referência é a mira de FUZIL (tronco girado)
+		var anim_fuzil := _obter_biblioteca().get_animation(MIRAS.fuzil[1])
+		if anim_fuzil == null:
+			anim_fuzil = anim
+		_pose_peito_mira = _pose_global_na_animacao(anim_fuzil, peito)
+		_ombro_d_mira = _pose_global_na_animacao(anim_fuzil, ombro).origin
 		_anexo_peito = BoneAttachment3D.new()
 		_anexo_peito.bone_name = _esqueleto.get_bone_name(peito)
 		_esqueleto.add_child(_anexo_peito)
@@ -375,6 +551,18 @@ func _calibrar_mao() -> void:
 				var d := _esqueleto.find_bone("%s_%s_r" % [nome_dedo, k])
 				if e >= 0 and d >= 0:
 					_ik_e.copiar_dedos.append([e, d])
+		# Alvos soltos (posição global definida a cada quadro)
+		_alvo_mao_e = _novo_alvo("AlvoRecargaMaoE")
+		_alvo_beirada_d = _novo_alvo("AlvoBeiradaD")
+		_alvo_beirada_e = _novo_alvo("AlvoBeiradaE")
+
+
+func _novo_alvo(nome: String) -> Marker3D:
+	var m := Marker3D.new()
+	m.name = nome
+	m.top_level = true
+	add_child(m)
+	return m
 
 
 
@@ -424,6 +612,10 @@ func prender_arma(cena: PackedScene, dados: DadosArma = null) -> ModeloArma:
 		_arma.queue_free()
 		_arma = null
 	_arma_longa = false
+	_recarga_t = 0.0
+	_alvo_arma_d = null
+	_alvo_arma_e = null
+	_usar_mira("pistola")
 	if cena == null or _anexo_mao == null:
 		return null
 	_arma = cena.instantiate() as ModeloArma
@@ -455,10 +647,14 @@ func prender_arma(cena: PackedScene, dados: DadosArma = null) -> ModeloArma:
 		_base_arma_baixa = _pose_peito_mira.affine_inverse() * baixo * mao_local.affine_inverse()
 		_arma.transform = _base_arma_baixa
 		_arma_longa = true
-		_ik_d.alvo = _arma.get_node("Mao")
-		_ik_e.alvo = _arma.get_node_or_null("MaoEsquerda")
-		if _ik_e.alvo == null:
-			_ik_e.alvo = _ik_d.alvo
+		_usar_mira("fuzil")
+		_alvo_arma_d = _arma.get_node("Mao")
+		_alvo_arma_e = _arma.get_node_or_null("MaoEsquerda")
+		if _alvo_arma_e == null:
+			_alvo_arma_e = _alvo_arma_d
+		if not _pendurado:
+			_ik_d.alvo = _alvo_arma_d
+			_ik_e.alvo = _alvo_arma_e
 	else:
 		_anexo_mao.add_child(_arma)
 		# Posiciona pelo ponto "Mao" da arma.
