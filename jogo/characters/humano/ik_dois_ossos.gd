@@ -30,6 +30,13 @@ var espelho_dedos := Vector4(1, 1, 1, 1)
 ## pares [osso, rotação local]. Usado no lugar de copiar_dedos quando preenchido.
 var curvar_dedos: Array = []
 
+## Osso da base do dedo médio: define o eixo da mão (punho -> dedos). Com ele, o
+## cotovelo é escolhido para o antebraço ficar ALINHADO com a mão (pulso reto).
+var osso_dedo_medio := ""
+var _eixo_mao := Vector3.ZERO
+## Parte da torção do pulso que o antebraço assume (0..1).
+@export var fracao_torcao := 0.6
+
 var _i_braco := -1
 var _i_antebraco := -1
 var _i_mao := -1
@@ -47,6 +54,11 @@ func _resolver_indices(esq: Skeleton3D) -> bool:
 		_i_braco = esq.find_bone(osso_braco)
 		_i_antebraco = esq.find_bone(osso_antebraco)
 		_i_mao = esq.find_bone(osso_mao)
+		var medio := esq.find_bone(osso_dedo_medio)
+		if medio >= 0 and _i_mao >= 0:
+			var r_mao := esq.get_bone_global_rest(_i_mao)
+			var v := esq.get_bone_global_rest(medio).origin - r_mao.origin
+			_eixo_mao = (r_mao.basis.orthonormalized().inverse() * v).normalized()
 	return _i_braco >= 0 and _i_antebraco >= 0 and _i_mao >= 0
 
 
@@ -70,7 +82,15 @@ func _process_modification() -> void:
 	var dir := para_alvo.normalized()
 
 	# Lado do cotovelo: o atual (da animação) + a dica, sem componente na direção do alvo
-	var polo := (b - a) + dica_cotovelo * 0.3
+	var polo: Vector3
+	if girar_mao and _eixo_mao != Vector3.ZERO:
+		# Cotovelo ideal: atrás do punho, na linha do eixo da mão (pulso reto).
+		var h := (alvo_xf.basis.orthonormalized() * _eixo_mao).normalized()
+		var cotovelo_ideal := t - h * comp_b
+		polo = (cotovelo_ideal - a) + dica_cotovelo.normalized() * 0.15
+	else:
+		# a dica manda mais que a pose da animação (cotovelo previsível)
+		polo = (b - a).normalized() * 0.35 + dica_cotovelo.normalized()
 	polo = (polo - dir * polo.dot(dir))
 	if polo.length_squared() < 1e-6:
 		polo = dica_cotovelo - dir * dica_cotovelo.dot(dir)
@@ -100,6 +120,22 @@ func _process_modification() -> void:
 	if girar_mao:
 		var g_mao3 := esq.get_bone_global_pose(_i_mao)
 		_definir_global(esq, _i_mao, Transform3D(alvo_xf.basis.orthonormalized().scaled(g_mao3.basis.get_scale()), g_mao3.origin))
+		_repartir_torcao(esq)
+
+
+## Divide a torção entre mão e antebraço (como o rádio gira em volta da ulna): sem
+## isso a malha do pulso "torce" (efeito embrulho de bala) quando a mão gira muito.
+func _repartir_torcao(esq: Skeleton3D) -> void:
+	if _eixo_mao == Vector3.ZERO:
+		return
+	var mao_final := esq.get_bone_global_pose(_i_mao)
+	var dlt := esq.get_bone_rest(_i_mao).basis.get_rotation_quaternion().inverse() * esq.get_bone_pose_rotation(_i_mao)
+	var proj := Vector3(dlt.x, dlt.y, dlt.z).dot(_eixo_mao)
+	var ang := wrapf(2.0 * atan2(proj, dlt.w), -PI, PI)
+	var eixo_ante := esq.get_bone_rest(_i_mao).origin.normalized()   # antebraço -> punho (local)
+	var qf := esq.get_bone_pose_rotation(_i_antebraco)
+	esq.set_bone_pose_rotation(_i_antebraco, (qf * Quaternion(eixo_ante, ang * fracao_torcao)).normalized())
+	_definir_global(esq, _i_mao, mao_final)
 
 
 static func _rotacao_entre(de: Vector3, para: Vector3) -> Quaternion:

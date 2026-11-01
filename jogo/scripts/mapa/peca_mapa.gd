@@ -107,6 +107,44 @@ func caixa(pos: Vector3, tam: Vector3, mat: Material, colisao := true,
 	return mi
 
 
+## Bloco "inclinado" (paralelepípedo) com cantos origem + a*u + b*v + c*w (a,b,c em 0..1).
+## Serve para muretas/corrimãos que acompanham uma escada sem quinas para fora.
+## Visual e colisão têm exatamente a mesma forma.
+func paralelepipedo(origem: Vector3, u: Vector3, v: Vector3, w: Vector3, mat: Material,
+		colisao := true) -> MeshInstance3D:
+	var c := []
+	for k in 8:
+		c.append(origem + u * float(k & 1) + v * float((k >> 1) & 1) + w * float((k >> 2) & 1))
+	var centro: Vector3 = origem + (u + v + w) * 0.5
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	# 6 faces (índices dos cantos), cada uma em 2 triângulos virados para fora
+	for f in [[0, 1, 3, 2], [4, 6, 7, 5], [0, 4, 5, 1], [2, 3, 7, 6], [0, 2, 6, 4], [1, 5, 7, 3]]:
+		var a: Vector3 = c[f[0]]
+		var b: Vector3 = c[f[1]]
+		var d: Vector3 = c[f[2]]
+		var e: Vector3 = c[f[3]]
+		var n := (b - a).cross(d - a).normalized()
+		var ordem := [a, b, d, a, d, e]
+		if n.dot((a + b + d + e) * 0.25 - centro) < 0.0:
+			n = -n
+			ordem = [a, d, b, a, e, d]
+		for pt in ordem:
+			st.set_normal(n)
+			st.add_vertex(pt)
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	mi.material_override = mat
+	_gerado.add_child(mi)
+	if colisao:
+		var cs := CollisionShape3D.new()
+		var forma := ConvexPolygonShape3D.new()
+		forma.points = PackedVector3Array(c)
+		cs.shape = forma
+		_corpo.add_child(cs)
+	return mi
+
+
 func cilindro(pos: Vector3, raio: float, altura: float, mat: Material, lados := 10,
 		colisao := true, detalhe := false) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
@@ -161,6 +199,20 @@ func rampa_colisao(a: Vector3, b: Vector3, largura: float) -> void:
 	cs.shape = forma
 	var base := Basis.looking_at(dir.normalized(), Vector3.UP)
 	cs.transform = Transform3D(base, meio - base.y * 0.1)
+	_corpo.add_child(cs)
+
+
+## Cunha MACIÇA de colisão sob uma rampa/escada (de "a" no chão até "b" no alto,
+## ao longo de -Z): ninguém entra por baixo da escada nem fica "dentro" dos degraus.
+func cunha_colisao(a: Vector3, b: Vector3, largura: float) -> void:
+	var cs := CollisionShape3D.new()
+	var forma := ConvexPolygonShape3D.new()
+	var x := largura * 0.5
+	forma.points = PackedVector3Array([
+		Vector3(-x, a.y, a.z), Vector3(x, a.y, a.z),
+		Vector3(-x, a.y, b.z), Vector3(x, a.y, b.z),
+		Vector3(-x, b.y, b.z), Vector3(x, b.y, b.z)])
+	cs.shape = forma
 	_corpo.add_child(cs)
 
 

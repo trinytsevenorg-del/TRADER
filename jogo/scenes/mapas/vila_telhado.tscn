@@ -570,7 +570,7 @@ transform = Transform3D(-0.433294, 0, -0.901252, 0, 1, 0, 0.901252, 0, -0.433294
 transform = Transform3D(0.433294, 0, -0.901252, 0, 1, 0, 0.901252, 0, 0.433294, -26, 0.15, 12.5)
 
 [node name="Renasce7" type="Marker3D" parent="Renascimentos" groups=["renascimento"]]
-transform = Transform3D(-0.428374, 0, 0.903602, 0, 1, 0, -0.903602, 0, -0.428374, 27, 0.15, -12.8)
+transform = Transform3D(-0.428374, 0, 0.903602, 0, 1, 0, -0.903602, 0, -0.428374, 25.2, 0.15, -12.8)
 
 [node name="Renasce8" type="Marker3D" parent="Renascimentos" groups=["renascimento"]]
 transform = Transform3D(0.453683, 0, 0.891163, 0, 1, 0, -0.891163, 0, 0.453683, 27.5, 0.15, 14.0)

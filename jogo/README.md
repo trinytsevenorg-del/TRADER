@@ -597,6 +597,34 @@ Resumo:
   volta, encaixa (com um tapa) e retorna ao guarda-mão; a arma gira um pouco no meio da
   recarga. Dura exatamente o `tempo_recarga` da arma.
 
+### Pente fino: anatomia, colisão e fluidez (v1.4)
+Teste novo no mapa real: `godot --headless --path jogo res://tests/teste_auto_colisao.tscn`
+(60 s, 4 bots difíceis + o jogador fazendo parkour sozinho; mede a cada quadro a cápsula
+e 14 juntas do esqueleto de cada personagem).
+- **Pulso reto** nas duas mãos (antes: 35–116° de dobra; agora 7–26°, como numa pegada
+  real). O cotovelo é escolhido para o antebraço seguir a linha da mão; a mão de apoio
+  procura, a cada quadro, a rotação em volta do guarda-mão (ou do cabo, na pistola) em
+  que o braço alcança sem torcer; a torção do pulso é dividida com o antebraço (sem
+  "embrulho de bala" na malha). Armas sem coronha ficam a um palmo do ombro.
+- **Pistola com as duas mãos** de verdade (a esquerda envolve o cabo junto com a direita).
+- **Ajuste ao chão** (como o "foot IK" dos jogos): pés, mãos, cotovelos, cabeça e quadril
+  nunca afundam no piso (antes os pés afundavam ~5 cm parado e até 10 cm correndo).
+- **Corpo não entra em paredes**: se uma junta passa de uma parede, o corpo visual se afasta
+  (suave); a arma longa **recolhe para cima** encostada numa parede; a pistola recolhe os
+  braços; deslize e rolamento **param** ao chegar numa parede/mureta.
+- **Corrida na parede**: o corpo inclina para LONGE da parede, com os pés nela (antes a
+  cabeça entrava na parede).
+- **Morte**: o corpo cai para o lado que estiver livre (não cai dentro de caixas/paredes).
+- **Escalada**: o caminho inteiro é conferido antes de subir (não atravessa escada, beiral
+  ou laje); o topo da beirada é procurado de cima (achava a laje errada).
+- **Mapa**: escadas com colisão maciça por baixo (dava para entrar embaixo dos degraus) e
+  mureta da escada sem quina sobrando no pé da escada.
+- **Botas de verdade** (o corpo base tinha dedos esculpidos e parecia descalço): geradas da
+  própria malha do pé, com bico arredondado e cano, dobrando junto na passada.
+- **Fluidez**: correções do corpo sem tranco (máx. ~5 cm por quadro), giro do corpo com
+  velocidade máxima (~840°/s, sem "estalo"), estados sem piscar (histerese em
+  parado/correndo e no meio-fio).
+
 ### Mãos segurando a arma de verdade (v1.3)
 - **Mão de apoio calculada**: a palma encosta **embaixo do guarda-mão** e os dedos fecham em
   volta dele (polegar do lado esquerdo, dedos subindo pelo direito). O ponto é achado pela
@@ -628,6 +656,7 @@ godot --headless --path jogo res://tests/teste_auto_etapa3.tscn   # armas
 godot --headless --path jogo res://tests/teste_auto_etapa4.tscn   # mapa
 godot --headless --path jogo res://tests/teste_auto_etapa5.tscn   # bots e mata-mata
 godot --headless --path jogo res://tests/teste_auto_etapa7.tscn   # progressão, caixas, roleta
+godot --headless --path jogo res://tests/teste_auto_colisao.tscn  # mapa real: corpo não atravessa nada + fluidez (60 s)
 (teste de rede: veja a etapa 8)
 ```
 

@@ -164,8 +164,9 @@ func tentar_beirada(direcao: Vector3, permitir_pendurar := true) -> bool:
 	var altura: float = chao.position.y - j.global_position.y
 	if permitir_pendurar and recarga_pendurar <= 0.0 and j.velocity.y < 0.5 \
 			and altura > j.altura_min_pendurar:
-		return _iniciar_pendurar(parede.position, parede.normal, chao.position)
-	if not j._espaco_livre(destino, j.ALTURA_EM_PE):
+		if _iniciar_pendurar(parede.position, parede.normal, chao.position):
+			return true
+	if not j._espaco_livre(destino, j.ALTURA_EM_PE) or not caminho_escalada_livre(j.global_position, destino):
 		return false
 	j._escalada_inicio = j.global_position
 	j._escalada_fim = destino
@@ -175,15 +176,26 @@ func tentar_beirada(direcao: Vector3, permitir_pendurar := true) -> bool:
 	return true
 
 
+## O caminho da escalada (sobe parado junto da parede e depois avança por cima da
+## borda) está livre? Confere o corpo no canto do "L" e no meio do avanço — não só no
+## destino — para não atravessar escadas inclinadas, corrimãos ou beirais.
+func caminho_escalada_livre(inicio: Vector3, fim: Vector3) -> bool:
+	var canto := Vector3(inicio.x, fim.y, inicio.z)
+	return j._espaco_livre(inicio.lerp(canto, 0.5), j.ALTURA_EM_PE) and j._espaco_livre(canto, j.ALTURA_EM_PE) \
+		and j._espaco_livre(canto.lerp(fim, 0.5), j.ALTURA_EM_PE)
+
+
 ## Raio de cima para baixo logo depois da borda da parede: acha o chão de cima.
 func _topo_da_parede(ponto_parede: Vector3, normal: Vector3, y_busca: float) -> Dictionary:
 	var ponto: Vector3 = ponto_parede - normal * 0.45
+	# O raio começa BEM acima do alcance: se começasse dentro de uma laje, não a veria
+	# e acharia o topo de baixo (o personagem subiria para dentro da laje).
 	var q := PhysicsRayQueryParameters3D.create(
-		Vector3(ponto.x, y_busca, ponto.z), Vector3(ponto.x, j.global_position.y + 0.4, ponto.z), 1)
+		Vector3(ponto.x, y_busca + 1.5, ponto.z), Vector3(ponto.x, j.global_position.y + 0.4, ponto.z), 1)
 	q.exclude = [j.get_rid()]
 	var chao := j.get_world_3d().direct_space_state.intersect_ray(q)
-	if not chao or chao.normal.y < 0.75:
-		return {}
+	if not chao or chao.normal.y < 0.75 or chao.position.y > y_busca:
+		return {}   # sem topo, ou o primeiro topo está alto demais para alcançar
 	return chao
 
 
@@ -198,8 +210,13 @@ const PES_ABAIXO_DA_BORDA := 1.74
 func _iniciar_pendurar(ponto_parede: Vector3, normal: Vector3, topo: Vector3) -> bool:
 	var n := Vector3(normal.x, 0, normal.z).normalized()
 	var pos := Vector3(ponto_parede.x, topo.y - PES_ABAIXO_DA_BORDA, ponto_parede.z) + n * (j.RAIO + 0.06)
-	# Precisa caber o corpo ali (sem atravessar chão nem teto).
+	# Precisa caber o corpo ali (sem atravessar chão nem teto)...
 	if not j._espaco_livre(pos, j.ALTURA_EM_PE):
+		return false
+	# ...e os pés ficarem no ar: com chão logo abaixo não se fica pendurado (sobe direto).
+	var q := PhysicsRayQueryParameters3D.create(pos + Vector3.UP * 0.5, pos + Vector3.DOWN * 0.3, 1)
+	q.exclude = [j.get_rid()]
+	if not j.get_world_3d().direct_space_state.intersect_ray(q).is_empty():
 		return false
 	j._normal_parede = n
 	_topo_beirada = Vector3(ponto_parede.x, topo.y, ponto_parede.z)
@@ -275,7 +292,7 @@ func _beirada_continua(pos: Vector3) -> bool:
 		return false
 	var p: Vector3 = parede.position - n * 0.25
 	var q2 := PhysicsRayQueryParameters3D.create(
-		Vector3(p.x, _topo_beirada.y + 0.4, p.z), Vector3(p.x, _topo_beirada.y - 0.4, p.z), 1)
+		Vector3(p.x, _topo_beirada.y + 1.5, p.z), Vector3(p.x, _topo_beirada.y - 0.4, p.z), 1)
 	q2.exclude = [j.get_rid()]
 	var topo := esp.intersect_ray(q2)
 	if topo.is_empty() or topo.normal.y < 0.75 or absf(topo.position.y - _topo_beirada.y) > 0.15:
@@ -285,7 +302,7 @@ func _beirada_continua(pos: Vector3) -> bool:
 
 func _subir_da_beirada() -> void:
 	var destino := Vector3(_topo_beirada.x, _topo_beirada.y + 0.05, _topo_beirada.z) - j._normal_parede * 0.45
-	if not j._espaco_livre(destino, j.ALTURA_EM_PE):
+	if not j._espaco_livre(destino, j.ALTURA_EM_PE) or not caminho_escalada_livre(j.global_position, destino):
 		return  # sem espaço em cima (teto baixo): continua pendurado
 	j._escalada_inicio = j.global_position
 	j._escalada_fim = destino
@@ -336,7 +353,7 @@ func tentar_transpor(_direcao: Vector3) -> bool:
 		return false
 	# Topo do obstáculo
 	var borda: Vector3 = hit.position - hit.normal * 0.15
-	var q2 := PhysicsRayQueryParameters3D.create(Vector3(borda.x, pe.y + 1.7, borda.z), Vector3(borda.x, pe.y + 0.3, borda.z), 1)
+	var q2 := PhysicsRayQueryParameters3D.create(Vector3(borda.x, pe.y + 3.0, borda.z), Vector3(borda.x, pe.y + 0.3, borda.z), 1)
 	q2.exclude = [j.get_rid()]
 	var topo := esp.intersect_ray(q2)
 	if not topo or topo.normal.y < 0.75:
@@ -390,8 +407,9 @@ func _modo_transpondo() -> void:
 	var p := a.lerp(b, t)
 	# Arco que passa acima do topo do obstáculo
 	var base_y := lerpf(a.y, b.y, t)
-	var folga := maxf(_pico - maxf(a.y, b.y), 0.0) + 0.15
-	p.y = base_y + 4.0 * t * (1.0 - t) * folga
+	# Arco "cheio" (sobe cedo): o corpo já está acima do topo quando passa pela quina.
+	var folga := maxf(_pico - maxf(a.y, b.y), 0.0) + 0.25
+	p.y = base_y + pow(4.0 * t * (1.0 - t), 0.5) * folga
 	j.global_position = p
 	if t >= 1.0:
 		transpondo = false
@@ -406,8 +424,9 @@ func modo_escalando(_delta: float) -> void:
 		return
 	# Movimento guiado em "L": primeiro sobe, depois avança por cima da borda.
 	var t := clampf(j._tempo_modo / duracao_escalada_atual, 0.0, 1.0)
-	var sobe := ease(clampf(t / 0.6, 0.0, 1.0), 0.6)
-	var avanca := ease(clampf((t - 0.35) / 0.65, 0.0, 1.0), 1.6)
+	# Sobe até a altura do topo ANTES de avançar por cima da borda (não raspa na quina).
+	var sobe := ease(clampf(t / 0.55, 0.0, 1.0), 0.6)
+	var avanca := ease(clampf((t - 0.5) / 0.5, 0.0, 1.0), 1.6)
 	var p := j._escalada_inicio
 	p.y = lerpf(j._escalada_inicio.y, j._escalada_fim.y, sobe)
 	p.x = lerpf(j._escalada_inicio.x, j._escalada_fim.x, avanca)

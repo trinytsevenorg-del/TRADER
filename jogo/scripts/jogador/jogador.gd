@@ -527,8 +527,13 @@ func _modo_rolando(direcao: Vector3, delta: float) -> void:
 	velocity.y = velocity.y - gravidade * delta if not is_on_floor() else -1.0
 	move_and_slide()
 	var livre := _espaco_livre(global_position, ALTURA_EM_PE)
-	if t >= 1.0 and livre:
+	# Rolou de frente numa parede: para (o corpo não mergulha dentro dela).
+	var bateu := (is_on_wall() and get_wall_normal().dot(_dir_acao) < -0.6) or _obstaculo_a_frente(0.5, 0.85)
+	if (t >= 1.0 or (bateu and t > 0.15)) and livre:
 		_recarga_rolar = recarga_rolamento
+		if bateu:
+			velocity.x = 0.0
+			velocity.z = 0.0
 		_mudar_modo(Modo.NORMAL)
 	elif _buffer_pulo > 0.0 and t > 0.5 and livre:
 		# Pulo no fim do rolamento: emenda direto.
@@ -590,7 +595,9 @@ func _modo_deslizando(direcao: Vector3, delta: float) -> void:
 	if _buffer_rolar > 0.0 and _recarga_rolar <= 0.0 and livre:
 		_iniciar_rolamento(direcao)
 		return
-	if (v < 3.5 or _tempo_modo > duracao_max_deslize or not is_on_floor()) and livre:
+	# Parede/mureta onde os pés vão parar (no deslize os pés vão ~1 m à frente): levanta.
+	var bateu := (is_on_wall() and get_wall_normal().dot(_dir_acao) < -0.6) or _obstaculo_a_frente(0.3, 1.05) or _obstaculo_a_frente(0.7, 0.9)
+	if (v < 3.5 or _tempo_modo > duracao_max_deslize or not is_on_floor() or bateu) and livre:
 		_mudar_modo(Modo.NORMAL)
 
 
@@ -618,14 +625,26 @@ func _definir_altura(altura: float) -> void:
 	_colisao.position.y = altura * 0.5
 
 
+## Tem parede/obstáculo logo à frente (na direção da ação), nesta altura e alcance?
+func _obstaculo_a_frente(altura: float, alcance: float) -> bool:
+	var de := global_position + Vector3.UP * altura
+	var dir := Vector3(_dir_acao.x, 0, _dir_acao.z).normalized()
+	var q := PhysicsRayQueryParameters3D.create(de, de + dir * alcance, 1)
+	q.exclude = [get_rid()]
+	var hit := get_world_3d().direct_space_state.intersect_ray(q)
+	return not hit.is_empty() and absf(hit.normal.y) < 0.6 and hit.normal.dot(dir) < -0.3
+
+
 ## Verifica se cabe uma cápsula em pé nesta posição (para levantar ou escalar).
 func _espaco_livre(pos_pes: Vector3, altura: float) -> bool:
 	var forma := CapsuleShape3D.new()
 	forma.radius = RAIO - 0.03
-	forma.height = altura - 0.1
+	forma.height = altura - 0.08
 	var q := PhysicsShapeQueryParameters3D.new()
 	q.shape = forma
-	q.transform = Transform3D(Basis(), pos_pes + Vector3.UP * (altura * 0.5 + 0.05))
+	# fundo da cápsula 6 cm acima dos pés (pega saliências baixas sem travar em
+	# chão levemente irregular)
+	q.transform = Transform3D(Basis(), pos_pes + Vector3.UP * (altura * 0.5 + 0.02))
 	q.collision_mask = 1
 	q.exclude = [get_rid()]
 	return get_world_3d().direct_space_state.intersect_shape(q, 1).is_empty()
@@ -635,12 +654,15 @@ func _girar_modelo(direcao: Vector3, delta: float) -> void:
 	var k := 1.0 - exp(-velocidade_giro_modelo * delta)
 	var alvo_yaw := visual.rotation.y
 	var alvo_incl := Vector2.ZERO
+	var alvo_pos := Vector3.ZERO   # deslocamento do corpo visual (pés na parede)
 	match modo:
 		Modo.PAREDE:
 			alvo_yaw = atan2(-_direcao_parede.x, -_direcao_parede.z)
-			# Inclina o corpo para longe da parede (pés na parede).
+			# Inclina o corpo para LONGE da parede, com os pés encostados nela (a cabeça
+			# não entra na parede). rotation.z > 0 tomba o topo para a esquerda.
 			var lado_parede := signf(_direcao_parede.cross(Vector3.UP).dot(-_normal_parede))
-			alvo_incl.y = -0.45 * lado_parede
+			alvo_incl.y = 0.38 * lado_parede
+			alvo_pos = -_normal_parede * 0.22
 		Modo.SUBINDO, Modo.ESCALANDO, Modo.PENDURADO:
 			alvo_yaw = atan2(_normal_parede.x, _normal_parede.z) if modo != Modo.ESCALANDO else visual.rotation.y
 		Modo.ROLANDO:
@@ -655,10 +677,18 @@ func _girar_modelo(direcao: Vector3, delta: float) -> void:
 				alvo_yaw = yaw_visao()  # mirando: corpo vira para onde a câmera olha
 			elif direcao.length_squared() > 0.01:
 				alvo_yaw = atan2(-direcao.x, -direcao.z)  # frente do modelo = -Z
-	visual.rotation.y = lerp_angle(visual.rotation.y, alvo_yaw, k)
+	# Gira suave e com velocidade máxima (~840°/s): sem "estalo" de um quadro para o outro.
+	var passo := wrapf(alvo_yaw - visual.rotation.y, -PI, PI) * k
+	visual.rotation.y += clampf(passo, -GIRO_MAX * delta, GIRO_MAX * delta)
 	_inclinacao = _inclinacao.lerp(alvo_incl, k)
 	visual.rotation.x = _inclinacao.x
 	visual.rotation.z = _inclinacao.y
+	visual.position = visual.position.move_toward(visual.position.lerp(alvo_pos, k), 1.5 * delta)
+
+
+var _tempo_estado := 0.0
+## Velocidade máxima de giro do corpo (rad/s).
+const GIRO_MAX := 14.6
 
 
 func _atualizar_estado() -> void:
@@ -673,15 +703,23 @@ func _atualizar_estado() -> void:
 		Modo.DESLIZANDO: novo = &"deslizando"
 		Modo.MORTO: novo = &"morto"
 		_:
-			if not is_on_floor():
+			# Histerese: degrau/meio-fio (fora do chão por 1-2 quadros) não vira "caindo",
+			# e parado/correndo usam limites diferentes para entrar e sair.
+			if not is_on_floor() and (velocity.y > 0.5 or _tempo_fora_do_chao > 0.1):
 				novo = &"pulando" if velocity.y > 0.0 else &"caindo"
 			elif _recuperacao > 0.0:
 				novo = &"aterrissando"
-			elif vel_h > 0.4:
+			elif vel_h > (0.25 if estado == &"correndo" else 0.6):
 				novo = &"correndo"
 			else:
 				novo = &"parado"
+			# parado <-> correndo só troca depois de 0,12 s no estado (sem "piscar")
+			if (novo == &"parado" and estado == &"correndo") or (novo == &"correndo" and estado == &"parado"):
+				if _tempo_estado < 0.12:
+					novo = estado
+	_tempo_estado += get_physics_process_delta_time()
 	if novo != estado:
+		_tempo_estado = 0.0
 		estado = novo
 		estado_mudou.emit(estado)
 	if modelo and modelo.has_method("atualizar_animacao"):
@@ -701,6 +739,8 @@ func _atualizar_estado() -> void:
 ## Teleporta o personagem (renascer, início de partida).
 func teleportar(pos: Vector3, yaw: float = 0.0) -> void:
 	global_position = pos
+	if modelo and modelo.has_method("reiniciar_ajustes"):
+		modelo.reiniciar_ajustes()
 	velocity = Vector3.ZERO
 	if modo != Modo.MORTO:
 		_mudar_modo(Modo.NORMAL)

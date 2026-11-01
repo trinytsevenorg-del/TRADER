@@ -84,3 +84,23 @@ metralhadora, sniper), mirando e em prontidão.
 - **Sons**: sintetizados (funcionais e leves); trocar por sons gravados CC0 é só substituir os
   arquivos em `assets/sons/` mantendo os nomes.
 - **Não testado em celular real** nesta rodada (todos os testes rodaram no PC/servidor).
+
+
+## 5. Pente fino v1.4 (anatomia, colisão e fluidez) — medido, não estimado
+
+Teste `tests/teste_auto_colisao.tscn` no mapa real (60 s, 5 personagens, 14 juntas cada):
+
+| Medida | Antes | Depois (3 rodadas de 60 s) |
+|---|---|---|
+| Partes do corpo dentro de chão/parede (medições) | 14.165 de 252.000 (5,6%) | 148–282 (0,06–0,11%), no máx. 8 quadros (0,13 s) seguidos |
+| Cápsula dentro do cenário | 28 quadros | 0–3 quadros, no máx. 2 seguidos (queda muito rápida) |
+| Dobra do pulso direito / esquerdo (mirando) | até 116° / 98° | ≤ 17° / ≤ 26° |
+| Maior "tranco" do corpo visual num quadro | 73 cm | 0–8 cm |
+| Giros bruscos (> 30° num quadro) | 91 | 0 |
+| Estado piscando (volta em < 0,1 s) | 63 | 2–4 |
+
+Limitações honestas: contatos curtos (até ~0,13 s) ainda acontecem, principalmente o pé
+encostando numa caixa ao correr/deslizar rente a pilhas de caixas — o ajuste corrige rápido,
+mas sem tranco (corrigir num quadro só daria "pulos" visíveis); não há ragdoll — o
+corpo morto usa a animação e escolhe o lado livre; se não houver nenhum lado livre (canto
+apertado), partes do corpo podem encostar nas paredes.
