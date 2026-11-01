@@ -48,16 +48,17 @@ static func material(s: DadosSkinArma) -> StandardMaterial3D:
 	if _materiais.has(s.id):
 		return _materiais[s.id]
 	var m := StandardMaterial3D.new()
-	m.metallic = s.metalico
+	# Metal limitado: sem reflexo de céu (leve no celular) metal puro fica escuro.
+	m.metallic = minf(s.metalico, 0.45)
 	m.roughness = s.rugosidade
 	m.albedo_texture = _textura(s)
 	m.uv1_triplanar = true
-	m.uv1_scale = Vector3.ONE * 6.0
+	m.uv1_scale = Vector3.ONE * 3.0
 	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	if s.emissao > 0.0:
 		m.emission_enabled = true
 		m.emission = s.cor_b
-		m.emission_energy_multiplier = s.emissao
+		m.emission_energy_multiplier = s.emissao * 0.5
 		m.emission_texture = m.albedo_texture
 	_materiais[s.id] = m
 	return m
@@ -99,7 +100,7 @@ static func _textura(s: DadosSkinArma) -> ImageTexture:
 			img.fill(s.cor_a)
 			for y in n:
 				for x in n:
-					if (x % 16 < 2) or (y % 16 < 2):
+					if (x % 32 < 2) or (y % 32 < 2):
 						img.set_pixel(x, y, s.cor_b)
 	img.generate_mipmaps()
 	return ImageTexture.create_from_image(img)

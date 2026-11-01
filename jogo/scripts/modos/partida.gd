@@ -13,6 +13,7 @@ var hud: CanvasLayer
 
 
 func _ready() -> void:
+	Controles.menu_aberto = false
 	mapa = load(Sessao.mapa).instantiate()
 	add_child(mapa)
 	if not mapa.esta_pronto:

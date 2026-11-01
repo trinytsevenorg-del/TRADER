@@ -66,7 +66,7 @@ arquivos e permita "instalar apps desconhecidos" para esse app quando o Android 
 | 4 | Mapa urbano | **pronta** |
 | 5 | Bots e mata-mata | **pronta** |
 | 6 | Modelos 3D e animações | **pronta** |
-| 7 | Personagens, skins, roleta, caixas, progressão | |
+| 7 | Personagens, skins, roleta, caixas, progressão | **pronta** |
 | 8 | Multiplayer com um amigo (Wi-Fi) | |
 | 9 | Exportar APK | |
 
@@ -442,6 +442,42 @@ O Mixamo (mixamo.com) é gratuito, mas exige login com conta Adobe.
    nó `Modelo` e mova os 3 marcadores.
 
 **Peça de mapa**: veja a etapa 4 (desmarque `gerar`, arraste o `.glb` e adicione a colisão).
+
+---
+
+## Etapa 7: personagens, skins, caixas, roleta e progressão
+
+O jogo agora abre no **menu principal** (`ui/menus/menu_principal.tscn`):
+
+| Tela | O que tem |
+|---|---|
+| Início | perfil (nível, XP, moedas, caixas, giros), dificuldade e **JOGAR**, multiplayer, estatísticas |
+| Personagem | masculino/feminino, 8 roupas (só visual) com prévia 3D que gira com o dedo. Começa com 2 liberadas; as outras saem na roleta |
+| Arsenal | as 12 armas com atributos em barras, descrição (vantagem/fraqueza), equipar principal/secundária, skins com moldura da raridade e prévia 3D |
+| Caixas | abrir caixa com animação de sorteio (faixa que desacelera), chances visíveis, comprar caixa com moedas |
+| Roleta | roda com fatias do **tamanho real da chance**, animação de giro, chances visíveis |
+
+**Ganha-se jogando** (nunca dinheiro real):
+- Partida: 100 XP + 50 por abate (+300 se vencer) · 40 moedas + 8 por abate (+100 se vencer).
+- Vitória: +1 caixa. Cada nível: +1 caixa e +1 giro. A cada 10 abates (somando partidas): +1 giro.
+- Caixa extra: 400 moedas.
+
+**Chances da caixa**: comum 60% · rara 27% · épica 10% · lendária 3%. Repetida vira
+moedas (40 / 120 / 350 / 1000). Testado: 10 000 sorteios batem com essas chances.
+
+**Roleta**: 100 moedas 28% · 300 XP 18% · 300 moedas 18% · caixa 14% · roupa nova 10% ·
+800 XP 7% · 1000 moedas 4% · skin épica ou lendária garantida 1%.
+
+**Skins de arma**: 48 skins (4 por arma), só visuais, em `data/skins_armas/<arma>_<n>.tres`.
+Cada uma tem raridade, padrão (liso, listras, camuflagem, digital, gradiente, brilho), duas
+cores, metal e brilho. Para criar outra: duplique um `.tres`, mude o número e as cores; ela
+entra sozinha nas caixas e no arsenal. Os bots usam skins aleatórias.
+
+**Tudo salvo no celular** em `user://progresso.save` (e as opções em `user://config.cfg`).
+
+Teste automático: `godot --headless --path jogo res://tests/teste_auto_etapa7.tscn`
+(XP/nível, recompensas, chances de 10 000 caixas e 3 000 giros, repetidas, compra,
+equipar, salvar/carregar e abertura de todas as telas).
 
 ### Ajustar a "sensação" do movimento
 

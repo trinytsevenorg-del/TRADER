@@ -23,7 +23,9 @@ func _process(_delta: float) -> void:
 
 func alternar() -> void:
 	visible = not visible
-	Controles.menu_aberto = visible
+	# No menu principal o jogo não está rodando: não mexe no estado dos controles.
+	if not get_tree().current_scene is Control:
+		Controles.menu_aberto = visible
 	if not visible:
 		Config.salvar()
 

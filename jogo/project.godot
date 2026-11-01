@@ -7,7 +7,7 @@ config_version=5
 
 config/name="Projeto Telhado"
 config/description="TPS com parkour para celular (projeto pessoal)."
-run/main_scene="res://scenes/partida.tscn"
+run/main_scene="res://ui/menus/menu_principal.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
 
 [autoload]
