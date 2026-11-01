@@ -63,16 +63,28 @@ enum Modo { NORMAL, PAREDE, SUBINDO, ESCALANDO, ROLANDO, DESLIZANDO }
 @export var duracao_escalada := 0.32
 
 @export_group("Rolamento")
-@export var velocidade_rolamento := 10.5
-@export var duracao_rolamento := 0.45
+## Velocidade no começo do rolamento (vai diminuindo suave até a de saída).
+@export var velocidade_rolamento := 8.6
+@export var velocidade_saida_rolamento := 6.2
+@export var duracao_rolamento := 0.7
 @export var invencibilidade_rolamento := 0.3
-@export var recarga_rolamento := 0.8
+## Curta, para dar para encadear: rolar, atirar, rolar de novo.
+@export var recarga_rolamento := 0.35
+## Quão rápido o joystick muda a direção durante o rolamento (maior = mais rápido).
+@export var controle_rolamento := 9.0
 
-@export_group("Deslize")
+@export_group("Deslize (estilo prancha)")
 @export var velocidade_min_deslize := 5.0
 @export var bonus_deslize := 1.15
-@export var atrito_deslize := 7.0
-@export var duracao_max_deslize := 1.0
+## Atrito baixo: o deslize mantém o embalo como uma prancha.
+@export var atrito_deslize := 2.5
+@export var duracao_max_deslize := 1.8
+## Velocidade de "puxar para o lado" com o joystick (o zigue-zague rápido).
+@export var velocidade_lateral_deslize := 7.5
+## Quão rápido o lado muda (maior = mais frenético).
+@export var aceleracao_lateral_deslize := 75.0
+## Quão rápido a direção da prancha faz a curva (rad/s).
+@export var curva_deslize := 1.2
 ## Cair com velocidade vertical maior que isto (correndo) já entra deslizando.
 @export var queda_para_deslize := 13.0
 
@@ -101,6 +113,7 @@ var modo: Modo = Modo.NORMAL
 var _tempo_fora_do_chao := 0.0
 var _buffer_pulo := 0.0
 var _buffer_rolar := 0.0
+var _buffer_deslizar := 0.0
 var _pulando := false
 var _pulo_duplo_disponivel := true
 var _tempo_modo := 0.0           # há quanto tempo está no modo atual
@@ -113,7 +126,8 @@ var _escalada_inicio := Vector3.ZERO
 var _escalada_fim := Vector3.ZERO
 var _vel_queda_anterior := 0.0
 var _inclinacao := Vector2.ZERO
-var _controle_reduzido := 0.0    # após pulo de parede, o joystick quase não muda a trajetória  # inclinação visual do corpo (x = frente, y = lado)
+var _controle_reduzido := 0.0
+var _vel_lateral := 0.0          # deslize: velocidade para o lado (zigue-zague)    # após pulo de parede, o joystick quase não muda a trajetória  # inclinação visual do corpo (x = frente, y = lado)
 
 @onready var visual: Node3D = $Visual
 @onready var camera_rig: CameraTPS = $CameraRig
@@ -204,11 +218,17 @@ func _physics_process(delta: float) -> void:
 		_buffer_pulo = tempo_buffer_pulo
 	else:
 		_buffer_pulo -= delta
+	# Botões "guardados": apertar um pouco antes da hora (recarga, fim do rolamento)
+	# ainda vale, para encadear rolar -> atirar -> rolar -> deslizar sem perder o toque.
 	if controlado_localmente and Input.is_action_just_pressed("rolar"):
-		_buffer_rolar = 0.25
+		_buffer_rolar = recarga_rolamento + 0.1
 	else:
 		_buffer_rolar -= delta
-	var quer_deslizar := controlado_localmente and Input.is_action_just_pressed("deslizar")
+	if controlado_localmente and Input.is_action_just_pressed("deslizar"):
+		_buffer_deslizar = 0.3
+	else:
+		_buffer_deslizar -= delta
+	var quer_deslizar := _buffer_deslizar > 0.0
 
 	match modo:
 		Modo.NORMAL:
@@ -501,18 +521,20 @@ func _iniciar_rolamento(direcao: Vector3) -> void:
 
 func _modo_rolando(direcao: Vector3, delta: float) -> void:
 	var t := _tempo_modo / duracao_rolamento
-	# Um pouco de controle durante o rolamento (curva suave).
+	# O joystick muda a direção durante o rolamento (resposta rápida, mas suave).
 	if direcao.length_squared() > 0.04:
-		_dir_acao = _dir_acao.slerp(direcao.normalized(), 3.0 * delta).normalized()
-	var vel := lerpf(velocidade_rolamento, velocidade_corrida, t * t)
+		_dir_acao = _dir_acao.slerp(direcao.normalized(), 1.0 - exp(-controle_rolamento * delta)).normalized()
+	# Velocidade cai suavemente do começo ao fim (sem tranco na saída).
+	var vel := lerpf(velocidade_rolamento, velocidade_saida_rolamento, ease(clampf(t, 0.0, 1.0), 0.6))
 	velocity.x = _dir_acao.x * vel
 	velocity.z = _dir_acao.z * vel
 	velocity.y = velocity.y - gravidade * delta if not is_on_floor() else -1.0
 	move_and_slide()
-	if t >= 1.0 and _espaco_livre(global_position, ALTURA_EM_PE):
+	var livre := _espaco_livre(global_position, ALTURA_EM_PE)
+	if t >= 1.0 and livre:
 		_recarga_rolar = recarga_rolamento
 		_mudar_modo(Modo.NORMAL)
-	elif _buffer_pulo > 0.0 and t > 0.5 and _espaco_livre(global_position, ALTURA_EM_PE):
+	elif _buffer_pulo > 0.0 and t > 0.5 and livre:
 		# Pulo no fim do rolamento: emenda direto.
 		_recarga_rolar = recarga_rolamento
 		_mudar_modo(Modo.NORMAL)
@@ -520,28 +542,42 @@ func _modo_rolando(direcao: Vector3, delta: float) -> void:
 
 
 # =========================================================================
-#  DESLIZE
+#  DESLIZE (estilo prancha)
 # =========================================================================
 
 func _iniciar_deslize() -> void:
+	_buffer_deslizar = 0.0
 	var h := Vector3(velocity.x, 0, velocity.z)
 	_dir_acao = h.normalized() if h.length_squared() > 0.1 else _frente_modelo()
 	var v := maxf(h.length() * bonus_deslize, velocidade_corrida * bonus_deslize)
 	velocity.x = _dir_acao.x * v
 	velocity.z = _dir_acao.z * v
+	_vel_lateral = 0.0
 	_mudar_modo(Modo.DESLIZANDO)
 
 
 func _modo_deslizando(direcao: Vector3, delta: float) -> void:
+	# Velocidade "para frente" (ao longo da prancha) cai devagar.
 	var h := Vector3(velocity.x, 0, velocity.z)
-	var v := maxf(h.length() - atrito_deslize * delta, 0.0)
+	var v := maxf(h.dot(_dir_acao) - atrito_deslize * delta, 0.0)
+	var lado := _dir_acao.cross(Vector3.UP).normalized()  # direita da prancha
+	var entrada_lateral := 0.0
 	if direcao.length_squared() > 0.04:
-		_dir_acao = _dir_acao.slerp(direcao.normalized(), 1.5 * delta).normalized()
+		# Curva suave da prancha na direção do joystick...
+		var alvo := direcao.normalized()
+		if alvo.dot(_dir_acao) > -0.3:  # puxar para trás não vira a prancha
+			_dir_acao = _dir_acao.slerp(alvo, 1.0 - exp(-curva_deslize * delta)).normalized()
+			lado = _dir_acao.cross(Vector3.UP).normalized()
+		# ...e o "puxão" lateral rápido (o zigue-zague).
+		entrada_lateral = clampf(direcao.dot(lado), -1.0, 1.0)
+	_vel_lateral = move_toward(_vel_lateral, entrada_lateral * velocidade_lateral_deslize,
+		aceleracao_lateral_deslize * delta)
 	# Sem espaço para levantar (ex.: túnel baixo): continua rastejando para a frente.
 	if not _espaco_livre(global_position, ALTURA_EM_PE) and direcao.length_squared() > 0.04:
 		v = maxf(v, 3.0)
-	velocity.x = _dir_acao.x * v
-	velocity.z = _dir_acao.z * v
+	var mov := _dir_acao * v + lado * _vel_lateral
+	velocity.x = mov.x
+	velocity.z = mov.z
 	velocity.y = velocity.y - gravidade * delta if not is_on_floor() else -1.0
 	move_and_slide()
 
@@ -553,7 +589,11 @@ func _modo_deslizando(direcao: Vector3, delta: float) -> void:
 		velocity.x *= 1.05
 		velocity.z *= 1.05
 		return
-	if (v < 3.0 or _tempo_modo > duracao_max_deslize or not is_on_floor()) and livre:
+	# Rolamento direto do deslize (deslizar -> rolar -> deslizar...).
+	if _buffer_rolar > 0.0 and _recarga_rolar <= 0.0 and livre:
+		_iniciar_rolamento(direcao)
+		return
+	if (v < 3.5 or _tempo_modo > duracao_max_deslize or not is_on_floor()) and livre:
 		_mudar_modo(Modo.NORMAL)
 
 
@@ -599,10 +639,13 @@ func _girar_modelo(direcao: Vector3, delta: float) -> void:
 			alvo_incl.y = -0.45 * lado_parede
 		Modo.SUBINDO, Modo.ESCALANDO:
 			alvo_yaw = atan2(_normal_parede.x, _normal_parede.z) if modo == Modo.SUBINDO else visual.rotation.y
-		Modo.ROLANDO, Modo.DESLIZANDO:
+		Modo.ROLANDO:
 			alvo_yaw = atan2(-_dir_acao.x, -_dir_acao.z)
-			if modo == Modo.DESLIZANDO:
-				alvo_incl.x = 0.5  # corpo deitado para trás
+		Modo.DESLIZANDO:
+			# Como numa prancha: corpo meio de lado, inclinando para dentro da curva.
+			alvo_yaw = camera_rig.yaw if mirando else atan2(-_dir_acao.x, -_dir_acao.z)
+			alvo_incl.x = 0.15
+			alvo_incl.y = -_vel_lateral / velocidade_lateral_deslize * 0.4
 		_:
 			if mirando:
 				alvo_yaw = camera_rig.yaw  # mirando: corpo vira para onde a câmera olha
@@ -637,7 +680,7 @@ func _atualizar_estado() -> void:
 		modelo.atualizar_animacao(estado, vel_h / velocidade_corrida, mirando)
 	if modelo and modelo.has_method("definir_mira"):
 		# Tronco mira junto com a câmera (menos no rolamento e na escalada).
-		var pode := modo != Modo.ROLANDO and modo != Modo.ESCALANDO and modo != Modo.DESLIZANDO
+		var pode := modo != Modo.ROLANDO and modo != Modo.ESCALANDO
 		var pitch_norm := camera_rig.pitch / deg_to_rad(60.0)
 		modelo.definir_mira(1.0 if (mirando and pode) else 0.0, pitch_norm)
 

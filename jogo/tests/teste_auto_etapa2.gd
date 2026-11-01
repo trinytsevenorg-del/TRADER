@@ -119,17 +119,56 @@ func _rodar() -> void:
 	_checar("subiu na caixa de 3 m correndo na parede (y=%.2f, em pé no topo)" % ym2, ym2 > 2.9)
 	Controles.joystick = Vector2.ZERO
 
-	# 6) Rolamento: invencível no início, depois não; anda alguns metros
+	# 6) Rolamento: mais lento e suave, invencível só no começo, joystick muda a direção
 	await _preparar(Vector3(0, 0.1, 10), 0.0)
 	var z_ini := _j.global_position.z
 	await _apertar("rolar")
 	_checar("rolando e invencível", _j.estado == &"rolando" and _j.invencivel)
 	await _esperar(0.33)
 	_checar("invencibilidade acaba (~0,3 s)", not _j.invencivel)
-	await _esperar(0.3)
-	_checar("rolou mais de 3,5 m (%.2f)" % (z_ini - _j.global_position.z), z_ini - _j.global_position.z > 3.5)
+	_checar("rolamento ainda em andamento aos 0,35 s (mais lento)", _j.estado == &"rolando")
+	await _esperar(0.45)
+	var dist_rol := z_ini - _j.global_position.z
+	_checar("rolou entre 4 e 6,5 m (%.2f)" % dist_rol, dist_rol > 4.0 and dist_rol < 6.5)
+	_checar("rolamento terminou (~0,7 s)", _j.estado != &"rolando")
+	await _apertar("rolar")   # durante a recarga: fica guardado
+	await _esperar(0.4)
+	_checar("rolar apertado na recarga sai sozinho logo depois (encadear)", _j.estado == &"rolando")
+	await _esperar(1.0)
+	# Direção no meio do rolamento
+	await _preparar(Vector3(0, 0.1, 10), 0.0)
 	await _apertar("rolar")
-	_checar("recarga impede rolar de novo na hora", _j.estado != &"rolando")
+	Controles.joystick = Vector2(1, 0)  # puxa para a direita
+	await _esperar(0.3)
+	var dir_rol := Vector3(_j.velocity.x, 0, _j.velocity.z).normalized()
+	_checar("joystick muda a direção do rolamento (dir.x=%.2f)" % dir_rol.x, dir_rol.x > 0.8)
+	Controles.joystick = Vector2.ZERO
+	await _esperar(1.0)
+
+	# 6b) Deslize estilo prancha: zigue-zague rápido e mantém embalo
+	await _preparar(Vector3(10, 0.1, 36), 0.0)   # área aberta
+	Controles.joystick = Vector2(0, -1)
+	await _esperar(0.4)
+	await _apertar("deslizar")
+	Controles.joystick = Vector2(1, -0.2).normalized()   # puxa para a direita
+	await _esperar(0.25)
+	var x_dir := _j.global_position.x
+	Controles.joystick = Vector2(-1, -0.2).normalized()  # e para a esquerda, rápido
+	await _esperar(0.3)
+	var x_esq := _j.global_position.x
+	_checar("deslize: foi para a direita (x=%.2f) e voltou para a esquerda rápido (x=%.2f)" % [x_dir, x_esq],
+		x_dir > 10.8 and x_esq < x_dir - 0.6)
+	_checar("deslize mantém o embalo (%.1f m/s, ainda deslizando)" % Vector2(_j.velocity.x, _j.velocity.z).length(),
+		_j.estado == &"deslizando" and Vector2(_j.velocity.x, _j.velocity.z).length() > 7.0)
+	# Encadeia: deslize -> rolamento -> deslize
+	await _apertar("rolar")
+	_checar("rolamento direto do deslize", _j.estado == &"rolando")
+	await _esperar(0.75)
+	await _apertar("deslizar")
+	await _esperar(0.1)
+	_checar("deslize de novo logo após o rolamento (%s, %.1f m/s, chão %s)" % [_j.estado, Vector2(_j.velocity.x, _j.velocity.z).length(), _j.is_on_floor()], _j.estado == &"deslizando")
+	Controles.joystick = Vector2.ZERO
+	await _esperar(2.0)
 
 	# 7) Deslize correndo, passando por baixo do túnel baixo (vão de 1,3 m)
 	await _preparar(Vector3(-28, 0.1, 16), 0.0)

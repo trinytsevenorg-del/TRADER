@@ -158,8 +158,8 @@ ajustar.
 | Pular da parede | Na parede, PULAR de novo: salta para longe, mantendo o embalo (dá para ir de uma parede a outra) | Espaço |
 | Correr parede acima | No ar, **de frente** para a parede, aperte PULAR | Espaço |
 | Agarrar e subir beirada | Automático: no ar, empurrando contra uma parede cujo topo está ao alcance das mãos | — |
-| Rolamento | ROLAR. 0,3 s invencível, recarga de 0,8 s. No ar, fica guardado e sai ao aterrissar | Shift |
-| Deslizar | DESLIZ. correndo. Cair de alto correndo também desliza sozinho. Passa por baixo de vãos baixos | C ou Ctrl |
+| Rolamento | ROLAR. Suave (~0,7 s), 0,3 s invencível, recarga curta (0,35 s). O joystick muda a direção durante o rolamento. Apertar na recarga ou no ar fica guardado e sai na hora certa | Shift |
+| Deslizar (prancha) | DESLIZ. correndo. Mantém o embalo como uma prancha; joystick para os lados = zigue-zague rápido, com o corpo inclinando. Dá para atirar deslizando e emendar deslize → rolamento → deslize. Cair de alto correndo também desliza sozinho | C ou Ctrl |
 
 Nenhuma ação "mata" a velocidade: sair do deslize pulando, pular no fim do rolamento,
 pular da parede e terminar uma escalada, tudo herda o embalo.

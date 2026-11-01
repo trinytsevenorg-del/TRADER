@@ -174,7 +174,7 @@ func atualizar_animacao(estado: StringName, fator_vel: float, mirando: bool) -> 
 		&"escalando":
 			_tocar("Jump_Land", 1.6)
 		&"rolando":
-			_tocar("Roll", 3.0)  # a animação tem 1,47 s; o rolamento dura ~0,45 s
+			_tocar("Roll", 2.1)  # a animação tem 1,47 s; o rolamento dura ~0,7 s
 		&"deslizando":
 			_tocar("Crouch_Idle", 0.5)
 		&"morto":
