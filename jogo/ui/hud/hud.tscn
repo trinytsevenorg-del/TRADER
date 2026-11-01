@@ -1,19 +1,20 @@
 [gd_scene load_steps=5 format=3]
 
-[ext_resource type="Script" path="res://ui/hud/mira.gd" id="1"]
+[ext_resource type="Script" path="res://ui/hud/hud_armas.gd" id="1"]
 [ext_resource type="Script" path="res://ui/hud/controles_toque.gd" id="2"]
 [ext_resource type="Script" path="res://ui/hud/painel_debug.gd" id="3"]
 [ext_resource type="Script" path="res://ui/menus/menu_config.gd" id="4"]
 
 [node name="HUD" type="CanvasLayer"]
 
-[node name="Mira" type="Control" parent="."]
+[node name="HudArmas" type="Control" parent="."]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
 script = ExtResource("1")
+jogador_path = NodePath("../../Jogador")
 
 [node name="ControlesToque" type="Control" parent="."]
 layout_mode = 3

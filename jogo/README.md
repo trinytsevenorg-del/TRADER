@@ -62,8 +62,8 @@ arquivos e permita "instalar apps desconhecidos" para esse app quando o Android 
 |---|---|---|
 | 1 | Personagem, câmera e controles | **pronta** |
 | 2 | Parkour e rolamento | **pronta** |
-| 3 | Armas e tiro | próxima |
-| 4 | Mapa urbano | |
+| 3 | Armas e tiro | **pronta** |
+| 4 | Mapa urbano | próxima |
 | 5 | Bots e mata-mata | |
 | 6 | Modelos 3D e animações | |
 | 7 | Personagens, skins, roleta, caixas, progressão | |
@@ -190,6 +190,74 @@ Teste automático: `godot --headless --path jogo res://tests/teste_auto_etapa2.t
 
 Animações que o pacote CC0 não tem (deslize, corrida na parede) usam uma animação parecida
 mais a inclinação do corpo. Na etapa 6 dá para trocar por animações do Mixamo.
+
+---
+
+## Etapa 3: armas e tiro
+
+### As 12 armas (nomes originais)
+
+| Arma | Tipo | Modo | Vantagem | Fraqueza |
+|---|---|---|---|---|
+| Vespa P9 | pistola | semi | precisa, troca/recarga rápidas | dano baixo |
+| Rinoceronte .50 | pistola | semi | 2 tiros derrubam; zoom leve | 6 balas, coice forte |
+| Zumbido MK2 | submetralhadora | auto | cadência altíssima, boa correndo/no ar | perde dano de longe |
+| Faísca R3 | submetralhadora | rajada 3 | rajada controlável | pausa entre rajadas |
+| Corisco AR | fuzil | auto | dano alto | recuo forte, **sem** aproximação |
+| Falcão BR | fuzil | rajada 3 | longe e preciso, **aproxima ao atirar** | fraco correndo/no ar |
+| Patrulha DMR | fuzil | semi | longo alcance, zoom 2x | ruim de perto |
+| Trovão 12 | escopeta | semi | 1 tiro derruba de perto | inútil de longe, lenta |
+| Ciclone A12 | escopeta | auto | chuva de chumbo de perto | alcance curtíssimo |
+| Bigorna LMG | metralhadora | auto | 100 balas, precisa mirando | lenta, recarga de 4,5 s |
+| Agulha SR | sniper | ferrolho | luneta 4x, cabeça = 1 tiro | sem luneta não acerta |
+| Coruja SX | sniper | semi | luneta 3x, mais rápida | 2 tiros no corpo |
+
+**Ajustar números:** abra `data/armas/<arma>.tres` na Godot. O Inspetor mostra tudo agrupado:
+disparo, dano, precisão, recuo, munição, mira/movimento.
+(`tools/gerar_armas.py` gerou os arquivos iniciais. Não rode de novo depois de editar,
+porque ele sobrescreve tudo.)
+
+### Como atirar
+- **ATIRAR**: modo depende da arma (semi = um por toque, rajada = 3 por toque, auto = segurando).
+  Arraste o dedo em cima do botão para mirar enquanto atira.
+- **Armas com zoom** (Falcão BR, Patrulha DMR, Rinoceronte, Bigorna): a câmera aproxima um
+  pouco enquanto você atira. As outras (Corisco AR, pistola Vespa...) não aproximam.
+- **Snipers**: **segure** ATIRAR para abrir a luneta e **solte** para atirar.
+- **MIRA**: câmera no ombro + menos dispersão (com qualquer arma).
+- **REC** recarrega (também recarrega sozinho ao tentar atirar sem bala). **TROCA** alterna
+  principal/secundária.
+- Dá para atirar correndo, no ar, na parede e rolando (com mais dispersão).
+- **Tiro automático** (Configurações): atira sozinho quando a mira passa num inimigo.
+- **Aim assist** (Configurações, 0 a 1): a mira "gruda" ao passar no inimigo e puxa de leve
+  enquanto você atira.
+- **Escolher armas**: Configurações > Arma principal / Arma secundária (o inventário de
+  verdade vem na etapa 7).
+
+### Na tela
+Mira que abre com a dispersão (fica vermelha sobre um inimigo), marcador de acerto
+(branco, amarelo na cabeça, vermelho no abate), números de dano, munição, barra de recarga e
+tela de luneta.
+
+### Bonecos de treino
+Cinco bonecos na pista (perto, médio, longe, andando de lado e um em cima da plataforma).
+Têm 100 de vida, morrem e voltam em 2,5 s.
+
+### Animação
+Agora o personagem usa um **AnimationTree**: as pernas fazem a locomoção (correr, pular,
+rolar) e o tronco/braços miram para onde a câmera aponta (para cima e para baixo também).
+A arma é presa no osso da mão e alinhada automaticamente pela pose de mira.
+
+### O que testar
+- [ ] Cada arma em Configurações: cadência, recuo, zoom e recarga diferentes.
+- [ ] Sniper: segure para a luneta, solte para atirar; tente tiro na cabeça (número amarelo).
+- [ ] Escopeta: de perto derruba, de longe quase não faz dano.
+- [ ] Atire correndo, pulando e na parede.
+- [ ] Ligue o tiro automático e passe a mira pelos bonecos.
+- [ ] Mude o aim assist de 0 para 1 e sinta a diferença no boneco que anda.
+
+Teste automático: `godot --headless --path jogo res://tests/teste_auto_etapa3.tscn` (20 verificações).
+
+Sem sons ainda: os efeitos sonoros entram junto com o mapa (etapa 4) ou o polimento.
 
 ### Ajustar a "sensação" do movimento
 

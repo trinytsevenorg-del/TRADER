@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="DadosArma" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/armas/dados_arma.gd" id="1"]
+[ext_resource type="PackedScene" path="res://weapons/modelos/ciclone_a12.tscn" id="2"]
+
+[resource]
+script = ExtResource("1")
+cena_modelo = ExtResource("2")
+id = "ciclone_a12"
+nome = "Ciclone A12"
+categoria = 3
+modo = 2
+cadencia = 240
+projeteis = 7
+dano = 8
+mult_cabeca = 1.2
+alcance_efetivo = 6
+alcance_maximo = 16
+dano_minimo = 0.2
+dispersao_base = 6.5
+dispersao_movendo = 0.5
+dispersao_ar = 1.0
+dispersao_por_tiro = 0.3
+dispersao_extra_max = 2.0
+recuperacao_dispersao = 8
+recuo_vertical = 3.0
+recuo_horizontal = 1.2
+mult_dispersao_mirando = 0.85
+pente = 10
+reserva = 40
+tempo_recarga = 3.0
+tempo_equipar = 0.6
+zoom = 1.0
+mult_velocidade = 0.97
+descricao = "Escopeta automática: chuva de chumbo de perto. Alcance curtíssimo e recarga longa."

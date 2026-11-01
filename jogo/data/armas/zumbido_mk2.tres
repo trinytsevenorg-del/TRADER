@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="DadosArma" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/armas/dados_arma.gd" id="1"]
+[ext_resource type="PackedScene" path="res://weapons/modelos/zumbido_mk2.tscn" id="2"]
+
+[resource]
+script = ExtResource("1")
+cena_modelo = ExtResource("2")
+id = "zumbido_mk2"
+nome = "Zumbido MK2"
+categoria = 1
+modo = 2
+cadencia = 900
+dano = 16
+mult_cabeca = 1.5
+alcance_efetivo = 12
+alcance_maximo = 35
+dano_minimo = 0.4
+dispersao_base = 2.0
+dispersao_movendo = 0.8
+dispersao_ar = 1.5
+dispersao_por_tiro = 0.25
+dispersao_extra_max = 5.0
+recuperacao_dispersao = 14
+recuo_vertical = 0.55
+recuo_horizontal = 0.55
+pente = 30
+reserva = 150
+tempo_recarga = 1.7
+tempo_equipar = 0.35
+zoom = 1.0
+mult_velocidade = 1.08
+descricao = "Cadência altíssima e ótima correndo e no ar. Perde muito dano de longe."

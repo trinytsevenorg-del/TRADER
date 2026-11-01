@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="DadosArma" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/armas/dados_arma.gd" id="1"]
+[ext_resource type="PackedScene" path="res://weapons/modelos/agulha_sr.tscn" id="2"]
+
+[resource]
+script = ExtResource("1")
+cena_modelo = ExtResource("2")
+id = "agulha_sr"
+nome = "Agulha SR"
+categoria = 5
+modo = 0
+cadencia = 45
+dano = 95
+mult_cabeca = 2.5
+atira_ao_soltar = true
+alcance_efetivo = 120
+alcance_maximo = 200
+dano_minimo = 0.85
+dispersao_base = 7.0
+dispersao_movendo = 3.0
+dispersao_ar = 5.0
+dispersao_por_tiro = 0.0
+dispersao_extra_max = 0.0
+recuperacao_dispersao = 10
+recuo_vertical = 7.0
+recuo_horizontal = 1.0
+mult_dispersao_mirando = 0.0
+pente = 5
+reserva = 20
+tempo_recarga = 3.2
+tempo_equipar = 0.8
+zoom = 4.0
+mult_velocidade = 0.9
+descricao = "Sniper de ferrolho com luneta 4x: um tiro na cabeça derruba. Sem luneta não acerta nada."

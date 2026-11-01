@@ -1,8 +1,11 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/jogador/jogador.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/camera/camera_tps.gd" id="2"]
 [ext_resource type="PackedScene" path="res://characters/provisorio/personagem_provisorio.tscn" id="3"]
+
+[ext_resource type="Script" path="res://scripts/armas/portador_armas.gd" id="4"]
+[ext_resource type="Script" path="res://scripts/combate/saude.gd" id="5"]
 
 [sub_resource type="CapsuleShape3D" id="capsula"]
 radius = 0.35
@@ -34,3 +37,9 @@ script = ExtResource("2")
 
 [node name="Camera3D" type="Camera3D" parent="CameraRig/Pitch/BracoOmbro/Ponta/Braco"]
 current = true
+
+[node name="Armas" type="Node" parent="."]
+script = ExtResource("4")
+
+[node name="Saude" type="Node" parent="."]
+script = ExtResource("5")

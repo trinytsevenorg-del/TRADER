@@ -118,6 +118,8 @@ var _controle_reduzido := 0.0    # após pulo de parede, o joystick quase não m
 @onready var visual: Node3D = $Visual
 @onready var camera_rig: CameraTPS = $CameraRig
 @onready var _colisao: CollisionShape3D = $Colisao
+@onready var armas: PortadorArmas = $Armas
+@onready var saude: Saude = $Saude
 ## Modelo 3D (provisório ou .glb). Precisa ter o método atualizar_animacao().
 var modelo: Node
 
@@ -133,9 +135,25 @@ func _ready() -> void:
 		trocar_modelo(Config.obter("personagem"), Config.obter("skin"))
 		Config.alterado.connect(func(chave, _v):
 			if chave == "personagem" or chave == "skin":
-				trocar_modelo(Config.obter("personagem"), Config.obter("skin")))
+				trocar_modelo(Config.obter("personagem"), Config.obter("skin"))
+			elif chave == "arma_principal" or chave == "arma_secundaria":
+				_equipar_armas_config())
+		_equipar_armas_config.call_deferred()
 	else:
 		_achar_modelo()
+
+
+func _equipar_armas_config() -> void:
+	armas.equipar_armas([Config.obter("arma_principal"), Config.obter("arma_secundaria")])
+
+
+## Chamado pelas armas inimigas (hitscan). Devolve o dano aplicado.
+func receber_dano(quantidade: float, atacante: Node, ponto: Vector3, cabeca: bool) -> float:
+	return saude.receber_dano(quantidade, atacante, ponto, cabeca)
+
+
+func esta_morto() -> bool:
+	return saude.morto
 
 
 ## Troca o modelo 3D (personagem e skin) sem mexer em mais nada.
@@ -151,6 +169,8 @@ func trocar_modelo(indice: int, skin: int = 0) -> void:
 		novo.skin = skin
 	visual.add_child(novo)
 	modelo = novo
+	if is_node_ready() and armas and not armas.slots.is_empty():
+		armas.reprender_modelo.call_deferred()
 
 
 func _achar_modelo() -> void:
@@ -168,8 +188,13 @@ func _physics_process(delta: float) -> void:
 	var entrada := Controles.obter_movimento() if controlado_localmente else Vector2.ZERO
 	var direcao := Vector3(entrada.x, 0.0, entrada.y).rotated(Vector3.UP, camera_rig.yaw)
 
-	mirando = controlado_localmente and Input.is_action_pressed("mirar")
-	camera_rig.mirando = mirando
+	# Corpo vira para a mira ao mirar ou atirar; câmera só aproxima com MIRA
+	# ou com armas que têm zoom (fuzis com mira óptica, snipers).
+	mirando = armas.mira_botao or armas.gatilho or armas.zoom_ativo or armas.tempo_desde_tiro < 0.6
+	camera_rig.mirando = armas.mira_botao or armas.zoom_ativo
+	camera_rig.zoom_arma = armas.zoom_atual() if armas.zoom_ativo else 1.0
+	# Na luneta (zoom forte) o próprio personagem some para não tampar a visão.
+	visual.visible = not (armas.zoom_ativo and armas.zoom_atual() >= 2.5 and camera_rig.progresso_mira() > 0.6)
 
 	_tempo_modo += delta
 	_recarga_rolar -= delta
@@ -243,7 +268,7 @@ func _modo_normal(direcao: Vector3, quer_deslizar: bool, delta: float) -> void:
 		_pulando = false
 
 	# Movimento horizontal relativo à câmera
-	var alvo := direcao * velocidade_corrida  # joystick pela metade = andar devagar
+	var alvo := direcao * velocidade_corrida * armas.mult_velocidade()  # joystick pela metade = andar devagar
 	var horizontal := Vector3(velocity.x, 0.0, velocity.z)
 	var acel := aceleracao_ar
 	if _controle_reduzido > 0.0:
@@ -610,6 +635,11 @@ func _atualizar_estado() -> void:
 		estado_mudou.emit(estado)
 	if modelo and modelo.has_method("atualizar_animacao"):
 		modelo.atualizar_animacao(estado, vel_h / velocidade_corrida, mirando)
+	if modelo and modelo.has_method("definir_mira"):
+		# Tronco mira junto com a câmera (menos no rolamento e na escalada).
+		var pode := modo != Modo.ROLANDO and modo != Modo.ESCALANDO and modo != Modo.DESLIZANDO
+		var pitch_norm := camera_rig.pitch / deg_to_rad(60.0)
+		modelo.definir_mira(1.0 if (mirando and pode) else 0.0, pitch_norm)
 
 
 ## Teleporta o personagem (renascer, início de partida).

@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="DadosArma" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/armas/dados_arma.gd" id="1"]
+[ext_resource type="PackedScene" path="res://weapons/modelos/corisco_ar.tscn" id="2"]
+
+[resource]
+script = ExtResource("1")
+cena_modelo = ExtResource("2")
+id = "corisco_ar"
+nome = "Corisco AR"
+categoria = 2
+modo = 2
+cadencia = 600
+dano = 27
+mult_cabeca = 1.7
+alcance_efetivo = 30
+alcance_maximo = 70
+dano_minimo = 0.55
+dispersao_base = 1.8
+dispersao_movendo = 2.2
+dispersao_ar = 3.5
+dispersao_por_tiro = 0.35
+dispersao_extra_max = 6.0
+recuperacao_dispersao = 9
+recuo_vertical = 1.6
+recuo_horizontal = 0.8
+pente = 30
+reserva = 120
+tempo_recarga = 2.3
+tempo_equipar = 0.5
+zoom = 1.0
+mult_velocidade = 1.0
+descricao = "Fuzil automático de dano alto. Recuo forte e sem aproximação: difícil de controlar de longe."

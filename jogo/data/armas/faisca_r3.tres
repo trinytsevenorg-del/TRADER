@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="DadosArma" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/armas/dados_arma.gd" id="1"]
+[ext_resource type="PackedScene" path="res://weapons/modelos/faisca_r3.tscn" id="2"]
+
+[resource]
+script = ExtResource("1")
+cena_modelo = ExtResource("2")
+id = "faisca_r3"
+nome = "Faísca R3"
+categoria = 1
+modo = 1
+cadencia = 1000
+tiros_por_rajada = 3
+pausa_rajada = 0.28
+dano = 20
+mult_cabeca = 1.6
+alcance_efetivo = 18
+alcance_maximo = 40
+dano_minimo = 0.5
+dispersao_base = 1.4
+dispersao_movendo = 1.0
+dispersao_ar = 1.8
+dispersao_por_tiro = 0.2
+dispersao_extra_max = 3.0
+recuperacao_dispersao = 12
+recuo_vertical = 0.8
+recuo_horizontal = 0.3
+pente = 30
+reserva = 120
+tempo_recarga = 1.8
+tempo_equipar = 0.35
+zoom = 1.0
+mult_velocidade = 1.06
+descricao = "Rajadas de 3 muito controláveis. Se errar a rajada, a pausa custa caro."

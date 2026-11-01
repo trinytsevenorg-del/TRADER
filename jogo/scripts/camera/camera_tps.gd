@@ -33,8 +33,14 @@ class_name CameraTPS
 var yaw := 0.0
 var pitch := deg_to_rad(-22.0)
 var mirando := false
-## Multiplicador de zoom da arma (as snipers vão usar isto na etapa 3).
+## Multiplicador de zoom da arma (1 = sem zoom; snipers 3-4).
 var zoom_arma := 1.0
+## Aim assist: < 1 deixa a mira mais lenta passando por cima de um inimigo.
+var fator_atrito := 1.0
+## Recuo: parte é temporária (volta sozinha) e parte fica.
+@export var recuperacao_recuo := 7.0
+@export var parte_permanente_recuo := 0.3
+var _recuo := Vector2.ZERO  # x = pitch, y = yaw (radianos)
 
 var alvo: Node3D
 var _mira_t := 0.0  # 0 = normal, 1 = mirando (interpolado)
@@ -87,9 +93,11 @@ func _process(delta: float) -> void:
 		var olhar := Controles.consumir_olhar()
 		if mirando:
 			olhar *= float(Config.obter("sens_mira")) / zoom_arma
+		olhar *= fator_atrito
 		var inv := -1.0 if Config.obter("inverter_y") else 1.0
 		yaw -= olhar.x
 		pitch = clamp(pitch - olhar.y * inv, deg_to_rad(pitch_min_graus), deg_to_rad(pitch_max_graus))
+	_recuo = _recuo.lerp(Vector2.ZERO, 1.0 - exp(-recuperacao_recuo * delta))
 	_aplicar_rotacao()
 
 	# 2) Posição: segue o personagem com suavização exponencial
@@ -112,8 +120,31 @@ func _process(delta: float) -> void:
 
 
 func _aplicar_rotacao() -> void:
-	rotation = Vector3(0, yaw, 0)
-	_pitch.rotation = Vector3(pitch, 0, 0)
+	rotation = Vector3(0, yaw + _recuo.y, 0)
+	var p := clampf(pitch + _recuo.x, deg_to_rad(pitch_min_graus), deg_to_rad(pitch_max_graus))
+	_pitch.rotation = Vector3(p, 0, 0)
+
+
+## Recuo do tiro, em graus (vertical sobe a mira; horizontal para os lados).
+func adicionar_recuo(vertical_graus: float, horizontal_graus: float) -> void:
+	var v := Vector2(deg_to_rad(vertical_graus), deg_to_rad(horizontal_graus))
+	_recuo += v * (1.0 - parte_permanente_recuo)
+	pitch = clampf(pitch + v.x * parte_permanente_recuo, deg_to_rad(pitch_min_graus), deg_to_rad(pitch_max_graus))
+	yaw += v.y * parte_permanente_recuo
+
+
+## Aim assist: gira a mira em direção a um ponto, no máximo "passo" radianos.
+func puxar_para(ponto: Vector3, passo: float) -> void:
+	var para := ponto - camera.global_position
+	var yaw_alvo := atan2(-para.x, -para.z)
+	var pitch_alvo := atan2(para.y, Vector2(para.x, para.z).length())
+	yaw += clampf(wrapf(yaw_alvo - yaw, -PI, PI), -passo, passo)
+	pitch += clampf(pitch_alvo - pitch, -passo, passo)
+
+
+## 0 = câmera normal, 1 = totalmente mirando (para HUD da luneta).
+func progresso_mira() -> float:
+	return _mira_t
 
 
 ## Direção "para frente" da câmera no plano do chão.

@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="DadosArma" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/armas/dados_arma.gd" id="1"]
+[ext_resource type="PackedScene" path="res://weapons/modelos/bigorna_lmg.tscn" id="2"]
+
+[resource]
+script = ExtResource("1")
+cena_modelo = ExtResource("2")
+id = "bigorna_lmg"
+nome = "Bigorna LMG"
+categoria = 4
+modo = 2
+cadencia = 700
+dano = 24
+mult_cabeca = 1.5
+alcance_efetivo = 35
+alcance_maximo = 75
+dano_minimo = 0.55
+dispersao_base = 3.0
+dispersao_movendo = 3.5
+dispersao_ar = 5.0
+dispersao_por_tiro = 0.2
+dispersao_extra_max = 6.0
+recuperacao_dispersao = 7
+recuo_vertical = 0.9
+recuo_horizontal = 0.9
+mult_dispersao_mirando = 0.35
+pente = 100
+reserva = 200
+tempo_recarga = 4.5
+tempo_equipar = 0.9
+zoom = 1.15
+mult_velocidade = 0.86
+descricao = "Metralhadora pesada: 100 balas e precisa mirando. Deixa você lento e a recarga é enorme."

@@ -59,6 +59,23 @@ func _ready() -> void:
 	Construtor.bloco(geo, Vector3(-29.8, 0.65, 8), Vector3(0.4, 1.3, 4), concreto)
 	Construtor.bloco(geo, Vector3(-26.2, 0.65, 8), Vector3(0.4, 1.3, 4), concreto)
 
+	# Bonecos de treino (etapa 3): perto, médio, longe, em movimento e no alto.
+	var cena_boneco: PackedScene = load("res://scenes/test/boneco_treino.tscn")
+	var bonecos := [
+		[Vector3(0, 0, -18), false, 0, 4],
+		[Vector3(-7, 0, -26), true, 1, 3],
+		[Vector3(6, 0, -34), true, 0, 7],
+		[Vector3(10, 4.0, -12), false, 1, 6],
+		[Vector3(-3, 0, -38), false, 0, 0],
+	]
+	for b in bonecos:
+		var boneco: Node3D = cena_boneco.instantiate()
+		boneco.position = b[0]
+		boneco.movel = b[1]
+		boneco.personagem = b[2]
+		boneco.skin = b[3]
+		add_child(boneco)
+
 	# Pilares.
 	for i in 6:
 		Construtor.bloco(geo, Vector3(-25 + i * 4, 3, 25), Vector3(1, 6, 1), laranja)

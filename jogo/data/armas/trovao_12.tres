@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="DadosArma" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/armas/dados_arma.gd" id="1"]
+[ext_resource type="PackedScene" path="res://weapons/modelos/trovao_12.tscn" id="2"]
+
+[resource]
+script = ExtResource("1")
+cena_modelo = ExtResource("2")
+id = "trovao_12"
+nome = "Trovão 12"
+categoria = 3
+modo = 0
+cadencia = 70
+projeteis = 8
+dano = 13
+mult_cabeca = 1.25
+alcance_efetivo = 7
+alcance_maximo = 22
+dano_minimo = 0.2
+dispersao_base = 5.5
+dispersao_movendo = 0.5
+dispersao_ar = 1.0
+dispersao_por_tiro = 0.0
+dispersao_extra_max = 0.0
+recuperacao_dispersao = 10
+recuo_vertical = 5.0
+recuo_horizontal = 1.5
+mult_dispersao_mirando = 0.8
+pente = 6
+reserva = 30
+tempo_recarga = 2.8
+tempo_equipar = 0.6
+zoom = 1.0
+mult_velocidade = 0.98
+descricao = "Escopeta de bomba: derruba com 1 tiro de pertinho. Inútil de longe e lenta entre tiros."

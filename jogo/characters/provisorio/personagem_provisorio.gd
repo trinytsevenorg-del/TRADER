@@ -66,7 +66,7 @@ func atualizar_animacao(estado: StringName, fator_vel: float, mirando: bool) -> 
 	var k := 1.0 - exp(-18.0 * dt)
 	_perna_e.rotation.x = lerp(_perna_e.rotation.x, s * amplitude if amplitude > 0.0 else _pose_ar(estado, 1.0), k)
 	_perna_d.rotation.x = lerp(_perna_d.rotation.x, -s * amplitude if amplitude > 0.0 else _pose_ar(estado, -1.0), k)
-	if mirando:
+	if mirando or _mirando_forcado:
 		# Braços "segurando a arma" apontados para frente.
 		_braco_d.rotation.x = lerp(_braco_d.rotation.x, PI / 2.0, k)
 		_braco_e.rotation.x = lerp(_braco_e.rotation.x, PI / 2.2, k)
@@ -107,3 +107,22 @@ func _caixa(pai: Node3D, pos: Vector3, tamanho: Vector3, mat: Material) -> MeshI
 	mi.position = pos
 	pai.add_child(mi)
 	return mi
+
+
+## Contrato com o jogador: parte de cima mirando (aqui: braço levantado).
+var _mirando_forcado := false
+func definir_mira(peso: float, _pitch: float) -> void:
+	_mirando_forcado = peso > 0.5
+
+
+var _arma: Node3D
+func prender_arma(cena: PackedScene) -> Node3D:
+	if _arma:
+		_arma.queue_free()
+	if cena == null:
+		return null
+	_arma = cena.instantiate()
+	_braco_d.add_child(_arma)
+	# Braço levantado (rotação x = 90°) aponta para frente; a arma fica na mão.
+	_arma.transform = Transform3D(Basis(Vector3.RIGHT, -PI / 2.0), Vector3(0, -0.56, 0))
+	return _arma

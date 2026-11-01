@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="DadosArma" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/armas/dados_arma.gd" id="1"]
+[ext_resource type="PackedScene" path="res://weapons/modelos/patrulha_dmr.tscn" id="2"]
+
+[resource]
+script = ExtResource("1")
+cena_modelo = ExtResource("2")
+id = "patrulha_dmr"
+nome = "Patrulha DMR"
+categoria = 2
+modo = 0
+cadencia = 260
+dano = 42
+mult_cabeca = 2.0
+alcance_efetivo = 55
+alcance_maximo = 110
+dano_minimo = 0.65
+dispersao_base = 0.5
+dispersao_movendo = 3.0
+dispersao_ar = 5.0
+dispersao_por_tiro = 1.2
+dispersao_extra_max = 4.0
+recuperacao_dispersao = 8
+recuo_vertical = 2.5
+recuo_horizontal = 0.5
+pente = 12
+reserva = 60
+tempo_recarga = 2.4
+tempo_equipar = 0.6
+zoom = 2.0
+mult_velocidade = 0.95
+descricao = "Semiautomático de longo alcance com zoom 2x. Ruim de perto e se movendo."

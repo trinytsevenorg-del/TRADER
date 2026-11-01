@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="DadosArma" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/armas/dados_arma.gd" id="1"]
+[ext_resource type="PackedScene" path="res://weapons/modelos/rinoceronte_50.tscn" id="2"]
+
+[resource]
+script = ExtResource("1")
+cena_modelo = ExtResource("2")
+id = "rinoceronte_50"
+nome = "Rinoceronte .50"
+categoria = 0
+modo = 0
+cadencia = 140
+dano = 48
+mult_cabeca = 2.0
+alcance_efetivo = 25
+alcance_maximo = 50
+dano_minimo = 0.5
+dispersao_base = 1.4
+dispersao_movendo = 2.0
+dispersao_ar = 3.0
+dispersao_por_tiro = 1.5
+dispersao_extra_max = 4.0
+recuperacao_dispersao = 6
+recuo_vertical = 4.5
+recuo_horizontal = 1.0
+pente = 6
+reserva = 30
+tempo_recarga = 2.0
+tempo_equipar = 0.5
+zoom = 1.15
+mult_velocidade = 1.0
+descricao = "Revólver pesado: dois tiros derrubam. Pente pequeno, coice forte e lento."

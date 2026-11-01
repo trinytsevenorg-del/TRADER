@@ -1,19 +1,37 @@
 extends Node3D
 ## Personagem humano a partir de um modelo .gltf/.glb com esqueleto humanoide.
 ##
-## Cumpre o mesmo contrato do modelo provisório: atualizar_animacao(estado, fator, mirando).
-## As animações vêm de UMA biblioteca compartilhada (assets/animations/animacoes_humanas.glb),
-## carregada uma vez só e reaproveitada por todos os personagens (economiza memória).
+## Contrato (igual ao modelo provisório):
+##   atualizar_animacao(estado, fator_velocidade, mirando)
+##   definir_mira(peso, pitch_normalizado)   parte de cima do corpo mirando (0..1, -1..1)
+##   prender_arma(cena) -> ModeloArma         coloca a arma na mão direita
+##
+## Animação: um AnimationTree montado por código:
+##
+##   [locomoção: Transition com Idle, Walk, Jog, Sprint, Jump, Roll...] -> [velocidade]
+##                                                                        \
+##   [mira: BlendSpace1D Pistol_Aim_Down / Neutral / Up] --(só tronco/braços/cabeça)--> Blend2 -> saída
+##
+## Ou seja: as pernas continuam correndo/pulando enquanto o tronco e os braços
+## miram para onde a câmera aponta (atirar correndo, no ar, na parede...).
+## As animações vêm de UMA biblioteca compartilhada (assets/animations/animacoes_humanas.glb).
 ##
 ## Para trocar o modelo: aponte "cena_modelo" para outro .glb com o MESMO esqueleto
-## (nomes de ossos estilo UE: pelvis, spine_01, thigh_l...). Nada de código muda.
+## (nomes de ossos estilo UE: pelvis, spine_01, thigh_l, hand_r...). Nada de código muda.
 
 const CAMINHO_ANIMACOES := "res://assets/animations/animacoes_humanas.glb"
 ## Tempo de transição entre animações (crossfade), em segundos.
-const MISTURA := 0.18
+const MISTURA := 0.15
+## Animações de locomoção usadas (nomes da biblioteca).
+const LOCOMOCAO := ["Idle", "Pistol_Idle", "Walk", "Jog_Fwd", "Sprint", "Jump", "Jump_Land",
+	"Roll", "Crouch_Idle", "Death01"]
+## Ossos que NÃO entram na mira (ficam com a locomoção).
+const OSSOS_PERNAS := ["root", "pelvis", "thigh_l", "calf_l", "foot_l", "ball_l", "ball_leaf_l",
+	"thigh_r", "calf_r", "foot_r", "ball_r", "ball_leaf_r"]
+const OSSO_MAO := "hand_r"
 
 @export var cena_modelo: PackedScene
-## Texturas de cor alternativas (skins de tom de pele). A primeira é a original.
+## Texturas de cor alternativas (skins). A primeira é a padrão.
 @export var texturas_skin: Array[Texture2D] = []
 ## Acessórios presos ao osso da cabeça (cabelo, barba...). Os arquivos estão
 ## modelados na posição do corpo em pose T ("origin at 0").
@@ -30,22 +48,22 @@ const MISTURA := 0.18
 static var _biblioteca: AnimationLibrary
 
 var _modelo: Node3D
-var _ap: AnimationPlayer
+var _esqueleto: Skeleton3D
+var _arvore: AnimationTree
 var _corpo: MeshInstance3D
 var _atual := ""
+var _peso_mira := 0.0
+var _peso_mira_alvo := 0.0
+var _anexo_mao: BoneAttachment3D
+var _calibracao_mao := Transform3D.IDENTITY
+var _arma: ModeloArma
 
 
 func _ready() -> void:
 	_modelo = cena_modelo.instantiate()
 	_modelo.rotation.y = PI  # o .gltf olha para +Z; no jogo a frente é -Z
 	add_child(_modelo)
-
-	_ap = AnimationPlayer.new()
-	_ap.name = "AnimationPlayer"
-	_modelo.add_child(_ap)
-	_ap.root_node = NodePath("..")
-	_ap.add_animation_library("", _obter_biblioteca())
-	_ap.playback_default_blend_time = MISTURA
+	_esqueleto = _modelo.find_child("Skeleton3D")
 
 	# Corpo principal = maior malha do modelo (onde a skin é aplicada).
 	var maior := 0.0
@@ -56,37 +74,14 @@ func _ready() -> void:
 			_corpo = mi
 	_prender_acessorios()
 	_aplicar_skin()
+	_montar_arvore()
+	_calibrar_mao()
 	_tocar("Idle")
 
 
-func _prender_acessorios() -> void:
-	if acessorios_cabeca.is_empty():
-		return
-	var esq: Skeleton3D = _modelo.find_child("Skeleton3D")
-	var osso := esq.find_bone("Head")
-	if osso < 0:
-		return
-	var anexo := BoneAttachment3D.new()
-	anexo.bone_name = "Head"
-	esq.add_child(anexo)
-	# Desfaz a posição de repouso da cabeça: o acessório foi modelado no
-	# espaço do corpo inteiro, e o anexo já está na cabeça.
-	var inverso := esq.get_bone_global_rest(osso).affine_inverse()
-	for cena in acessorios_cabeca:
-		var a: Node3D = cena.instantiate()
-		a.transform = inverso * a.transform
-		anexo.add_child(a)
-	# Tinge cabelo/barba (acessórios) e sobrancelhas.
-	var pelos: Array = anexo.find_children("*", "MeshInstance3D", true, false)
-	pelos.append_array(_modelo.find_children("Eyebrows*", "MeshInstance3D", true, false))
-	for mi in pelos:
-		for i in mi.mesh.get_surface_count():
-			var mat: Material = mi.mesh.surface_get_material(i)
-			if mat is BaseMaterial3D:
-				mat = mat.duplicate()
-				mat.albedo_color = cor_cabelo
-				mi.set_surface_override_material(i, mat)
-
+# =========================================================================
+#  ANIMATION TREE
+# =========================================================================
 
 static func _obter_biblioteca() -> AnimationLibrary:
 	if _biblioteca == null:
@@ -97,22 +92,64 @@ static func _obter_biblioteca() -> AnimationLibrary:
 	return _biblioteca
 
 
-func _aplicar_skin() -> void:
-	if _corpo == null or texturas_skin.is_empty():
-		return
-	var tex: Texture2D = texturas_skin[clamp(skin, 0, texturas_skin.size() - 1)]
-	var mat := _corpo.mesh.surface_get_material(0)
-	if mat is BaseMaterial3D:
-		mat = mat.duplicate()  # duplicar: não afeta outros personagens
-		mat.albedo_texture = tex
-		_corpo.set_surface_override_material(0, mat)
+func _montar_arvore() -> void:
+	_arvore = AnimationTree.new()
+	_arvore.name = "AnimationTree"
+	_modelo.add_child(_arvore)
+	_arvore.root_node = NodePath("..")
+	_arvore.add_animation_library("", _obter_biblioteca())
+
+	var bt := AnimationNodeBlendTree.new()
+	# Locomoção: troca de animação com crossfade.
+	var trans := AnimationNodeTransition.new()
+	trans.xfade_time = MISTURA
+	for i in LOCOMOCAO.size():
+		trans.add_input(LOCOMOCAO[i])
+	bt.add_node("loco", trans, Vector2(200, 0))
+	for i in LOCOMOCAO.size():
+		var an := AnimationNodeAnimation.new()
+		an.animation = LOCOMOCAO[i]
+		bt.add_node("a_" + LOCOMOCAO[i], an, Vector2(0, i * 80))
+		bt.connect_node("loco", i, "a_" + LOCOMOCAO[i])
+	var vel := AnimationNodeTimeScale.new()
+	bt.add_node("vel", vel, Vector2(400, 0))
+	bt.connect_node("vel", 0, "loco")
+
+	# Mira: olha para baixo / reto / para cima conforme a câmera.
+	var bs := AnimationNodeBlendSpace1D.new()
+	for par in [["Pistol_Aim_Down", -1.0], ["Pistol_Aim_Neutral", 0.0], ["Pistol_Aim_Up", 1.0]]:
+		var an := AnimationNodeAnimation.new()
+		an.animation = par[0]
+		bs.add_blend_point(an, par[1])
+	bt.add_node("mira", bs, Vector2(400, 300))
+
+	# Mistura só no tronco/braços/cabeça.
+	var b2 := AnimationNodeBlend2.new()
+	b2.filter_enabled = true
+	var prefixo := str(_modelo.get_path_to(_esqueleto))
+	for i in _esqueleto.get_bone_count():
+		var nome := _esqueleto.get_bone_name(i)
+		if not OSSOS_PERNAS.has(nome):
+			b2.set_filter_path(NodePath("%s:%s" % [prefixo, nome]), true)
+	bt.add_node("mistura", b2, Vector2(600, 100))
+	bt.connect_node("mistura", 0, "vel")
+	bt.connect_node("mistura", 1, "mira")
+	bt.connect_node("output", 0, "mistura")
+
+	_arvore.tree_root = bt
+	_arvore.active = true
 
 
 func _tocar(nome: String, velocidade: float = 1.0) -> void:
-	_ap.speed_scale = velocidade
+	_arvore.set("parameters/vel/scale", velocidade)
 	if nome != _atual:
 		_atual = nome
-		_ap.play(nome)
+		_arvore.set("parameters/loco/transition_request", nome)
+
+
+func _process(delta: float) -> void:
+	_peso_mira = move_toward(_peso_mira, _peso_mira_alvo, delta * 8.0)
+	_arvore.set("parameters/mistura/blend_amount", _peso_mira)
 
 
 ## Escolhe a animação conforme o estado do personagem.
@@ -140,5 +177,121 @@ func atualizar_animacao(estado: StringName, fator_vel: float, mirando: bool) -> 
 			_tocar("Roll", 3.0)  # a animação tem 1,47 s; o rolamento dura ~0,45 s
 		&"deslizando":
 			_tocar("Crouch_Idle", 0.5)
+		&"morto":
+			_tocar("Death01")
 		_:
-			_tocar("Pistol_Idle" if mirando else "Idle")
+			_tocar("Pistol_Idle" if (mirando or _arma != null) else "Idle")
+
+
+## Tronco e braços mirando. peso 0..1; pitch -1 (baixo) .. 1 (cima).
+func definir_mira(peso: float, pitch: float) -> void:
+	_peso_mira_alvo = peso
+	_arvore.set("parameters/mira/blend_position", clamp(pitch, -1.0, 1.0))
+
+
+# =========================================================================
+#  ARMA NA MÃO
+# =========================================================================
+
+## Calcula, uma vez, como a arma deve ficar presa ao osso da mão para que,
+## na pose de mira, ela aponte exatamente para a frente do personagem.
+## Funciona para qualquer modelo com o mesmo esqueleto (sem ajuste manual).
+func _calibrar_mao() -> void:
+	var osso := _esqueleto.find_bone(OSSO_MAO)
+	if osso < 0:
+		return
+	var anim := _obter_biblioteca().get_animation("Pistol_Aim_Neutral")
+	var mao := _pose_global_na_animacao(anim, osso)
+	var dedo := _esqueleto.find_bone("middle_01_r")
+	var palma := mao.origin
+	if dedo >= 0:
+		palma = mao.origin.lerp(_pose_global_na_animacao(anim, dedo).origin, 0.6)
+	# No espaço do esqueleto o personagem olha para +Z: a arma (-Z = frente) gira 180°.
+	var desejado := Transform3D(Basis(Vector3.UP, PI), palma)
+	_calibracao_mao = mao.affine_inverse() * desejado
+
+	_anexo_mao = BoneAttachment3D.new()
+	_anexo_mao.bone_name = OSSO_MAO
+	_esqueleto.add_child(_anexo_mao)
+
+
+## Pose global (no espaço do esqueleto) de um osso no primeiro quadro de uma animação.
+func _pose_global_na_animacao(anim: Animation, osso: int) -> Transform3D:
+	var cadeia := []
+	var b := osso
+	while b >= 0:
+		cadeia.push_front(b)
+		b = _esqueleto.get_bone_parent(b)
+	var prefixo := "%s:" % str(_modelo.get_path_to(_esqueleto))
+	var t := Transform3D.IDENTITY
+	for i in cadeia:
+		var rest := _esqueleto.get_bone_rest(i)
+		var rot := rest.basis.get_rotation_quaternion()
+		var pos := rest.origin
+		var esc := rest.basis.get_scale()
+		var caminho := NodePath(prefixo + _esqueleto.get_bone_name(i))
+		var tr := anim.find_track(caminho, Animation.TYPE_ROTATION_3D)
+		if tr >= 0:
+			rot = anim.rotation_track_interpolate(tr, 0.0)
+		var tp := anim.find_track(caminho, Animation.TYPE_POSITION_3D)
+		if tp >= 0:
+			pos = anim.position_track_interpolate(tp, 0.0)
+		t = t * Transform3D(Basis(rot).scaled(esc), pos)
+	return t
+
+
+func prender_arma(cena: PackedScene) -> ModeloArma:
+	if _arma:
+		_arma.queue_free()
+		_arma = null
+	if cena == null or _anexo_mao == null:
+		return null
+	_arma = cena.instantiate() as ModeloArma
+	_anexo_mao.add_child(_arma)
+	# Posiciona pelo ponto "Mao" da arma.
+	var mao_local: Transform3D = (_arma.get_node("Mao") as Node3D).transform
+	_arma.transform = _calibracao_mao * mao_local.affine_inverse()
+	return _arma
+
+
+# =========================================================================
+#  SKIN E ACESSÓRIOS
+# =========================================================================
+
+func _prender_acessorios() -> void:
+	if acessorios_cabeca.is_empty():
+		return
+	var osso := _esqueleto.find_bone("Head")
+	if osso < 0:
+		return
+	var anexo := BoneAttachment3D.new()
+	anexo.bone_name = "Head"
+	_esqueleto.add_child(anexo)
+	# Desfaz a posição de repouso da cabeça: o acessório foi modelado no
+	# espaço do corpo inteiro, e o anexo já está na cabeça.
+	var inverso := _esqueleto.get_bone_global_rest(osso).affine_inverse()
+	for cena in acessorios_cabeca:
+		var a: Node3D = cena.instantiate()
+		a.transform = inverso * a.transform
+		anexo.add_child(a)
+	# Tinge cabelo/barba (acessórios) e sobrancelhas.
+	var pelos: Array = anexo.find_children("*", "MeshInstance3D", true, false)
+	pelos.append_array(_modelo.find_children("Eyebrows*", "MeshInstance3D", true, false))
+	for mi in pelos:
+		for i in mi.mesh.get_surface_count():
+			var mat: Material = mi.mesh.surface_get_material(i)
+			if mat is BaseMaterial3D:
+				mat = mat.duplicate()
+				mat.albedo_color = cor_cabelo
+				mi.set_surface_override_material(i, mat)
+
+
+func _aplicar_skin() -> void:
+	if _corpo == null or texturas_skin.is_empty():
+		return
+	var tex: Texture2D = texturas_skin[clamp(skin, 0, texturas_skin.size() - 1)]
+	var mat := _corpo.mesh.surface_get_material(0)
+	if mat is BaseMaterial3D:
+		mat = mat.duplicate()  # duplicar: não afeta outros personagens
+		mat.albedo_texture = tex
+		_corpo.set_surface_override_material(0, mat)

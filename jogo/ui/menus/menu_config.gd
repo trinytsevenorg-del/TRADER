@@ -66,6 +66,8 @@ func _montar() -> void:
 
 	_opcoes("Personagem", "personagem", ["Masculino", "Feminino"])
 	_opcoes("Skin", "skin", Config.NOMES_SKINS)
+	_opcoes_id("Arma principal", "arma_principal", CatalogoArmas.PRINCIPAIS)
+	_opcoes_id("Arma secundária", "arma_secundaria", CatalogoArmas.SECUNDARIAS)
 	_slider("Sensibilidade (toque)", "sens_toque", 0.2, 3.0, 0.05)
 	_slider("Sensibilidade (mouse)", "sens_mouse", 0.2, 3.0, 0.05)
 	_slider("Sensibilidade mirando / luneta", "sens_mira", 0.2, 1.5, 0.05)
@@ -134,4 +136,17 @@ func _opcoes(texto: String, chave: String, itens: Array) -> void:
 	o.custom_minimum_size = Vector2(0, 52)
 	o.add_theme_font_size_override("font_size", 22)
 	o.item_selected.connect(func(i: int): Config.definir(chave, i))
+	_caixa.add_child(o)
+
+
+## Lista de opções em que o valor salvo é um id (texto), não o índice.
+func _opcoes_id(texto: String, chave: String, ids: Array) -> void:
+	_rotulo(texto)
+	var o := OptionButton.new()
+	for n in CatalogoArmas.nomes(ids):
+		o.add_item(n)
+	o.selected = max(ids.find(Config.obter(chave)), 0)
+	o.custom_minimum_size = Vector2(0, 52)
+	o.add_theme_font_size_override("font_size", 22)
+	o.item_selected.connect(func(i: int): Config.definir(chave, ids[i]))
 	_caixa.add_child(o)

@@ -30,7 +30,7 @@ const PADRAO := {
 	"deslizar":    {"acao": "deslizar", "rotulo": "DESLIZ.", "pos": Vector2(0.70, 0.60), "raio": 44.0},
 	"mirar":       {"acao": "mirar", "rotulo": "MIRA", "pos": Vector2(0.93, 0.50), "raio": 42.0},
 	"recarregar":  {"acao": "recarregar", "rotulo": "REC", "pos": Vector2(0.94, 0.93), "raio": 36.0},
-	"trocar_arma": {"acao": "trocar_arma", "rotulo": "TROCA", "pos": Vector2(0.55, 0.92), "raio": 36.0},
+	"trocar_arma": {"acao": "trocar_arma", "rotulo": "TROCA", "pos": Vector2(0.45, 0.92), "raio": 36.0},
 	"pausar":      {"acao": "pausar", "rotulo": "II", "pos": Vector2(0.96, 0.08), "raio": 30.0},
 }
 

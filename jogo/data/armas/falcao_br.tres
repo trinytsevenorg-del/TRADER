@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="DadosArma" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/armas/dados_arma.gd" id="1"]
+[ext_resource type="PackedScene" path="res://weapons/modelos/falcao_br.tscn" id="2"]
+
+[resource]
+script = ExtResource("1")
+cena_modelo = ExtResource("2")
+id = "falcao_br"
+nome = "Falcão BR"
+categoria = 2
+modo = 1
+cadencia = 750
+tiros_por_rajada = 3
+pausa_rajada = 0.3
+dano = 23
+mult_cabeca = 1.7
+alcance_efetivo = 40
+alcance_maximo = 80
+dano_minimo = 0.6
+dispersao_base = 1.0
+dispersao_movendo = 2.5
+dispersao_ar = 4.0
+dispersao_por_tiro = 0.2
+dispersao_extra_max = 3.0
+recuperacao_dispersao = 10
+recuo_vertical = 1.0
+recuo_horizontal = 0.3
+pente = 30
+reserva = 120
+tempo_recarga = 2.5
+tempo_equipar = 0.55
+zoom = 1.4
+mult_velocidade = 0.98
+descricao = "Fuzil de rajada com mira óptica leve: aproxima ao atirar. Fraco correndo e no ar."

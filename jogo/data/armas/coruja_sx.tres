@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="DadosArma" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/armas/dados_arma.gd" id="1"]
+[ext_resource type="PackedScene" path="res://weapons/modelos/coruja_sx.tscn" id="2"]
+
+[resource]
+script = ExtResource("1")
+cena_modelo = ExtResource("2")
+id = "coruja_sx"
+nome = "Coruja SX"
+categoria = 5
+modo = 0
+cadencia = 150
+dano = 62
+mult_cabeca = 2.0
+atira_ao_soltar = true
+alcance_efetivo = 90
+alcance_maximo = 160
+dano_minimo = 0.8
+dispersao_base = 5.0
+dispersao_movendo = 3.0
+dispersao_ar = 5.0
+dispersao_por_tiro = 0.0
+dispersao_extra_max = 0.0
+recuperacao_dispersao = 10
+recuo_vertical = 4.0
+recuo_horizontal = 1.0
+mult_dispersao_mirando = 0.05
+pente = 8
+reserva = 32
+tempo_recarga = 2.8
+tempo_equipar = 0.7
+zoom = 3.0
+mult_velocidade = 0.92
+descricao = "Sniper semiautomática 3x: atira mais rápido que a Agulha, mas precisa de 2 tiros no corpo."
