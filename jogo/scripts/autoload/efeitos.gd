@@ -5,10 +5,16 @@ extends Node3D
 ##  - impacto (fagulha/poeira onde a bala bateu)
 ##  - números de dano flutuando
 ## Uso: Efeitos.rastro(de, ate, cor) / Efeitos.impacto(pos, normal) / Efeitos.numero(pos, 25, cabeca)
+##
+## SONS (assets/sons/<nome>.wav, gerados por tools/gerar_sons.py):
+##   Efeitos.som_3d("tiro_fuzil", posicao)   som no mundo (volume cai com a distância)
+##   Efeitos.som_2d("acerto")                som de interface (sempre igual)
 
 const QTD_RASTROS := 32
 const QTD_IMPACTOS := 24
 const QTD_NUMEROS := 16
+const QTD_SONS_3D := 16
+const QTD_SONS_2D := 4
 
 var _rastros: Array[MeshInstance3D] = []
 var _vida_rastros: Array[float] = []
@@ -19,6 +25,11 @@ var _vida_numeros: Array[float] = []
 var _i_rastro := 0
 var _i_impacto := 0
 var _i_numero := 0
+var _sons_3d: Array[AudioStreamPlayer3D] = []
+var _sons_2d: Array[AudioStreamPlayer] = []
+var _i_som_3d := 0
+var _i_som_2d := 0
+var _cache_sons := {}
 
 
 func _ready() -> void:
@@ -53,6 +64,18 @@ func _ready() -> void:
 		add_child(m)
 		_impactos.append(m)
 		_vida_impactos.append(0.0)
+
+	for i in QTD_SONS_3D:
+		var p := AudioStreamPlayer3D.new()
+		p.unit_size = 8.0
+		p.max_distance = 70.0
+		p.attenuation_filter_cutoff_hz = 9000.0
+		add_child(p)
+		_sons_3d.append(p)
+	for i in QTD_SONS_2D:
+		var p2 := AudioStreamPlayer.new()
+		add_child(p2)
+		_sons_2d.append(p2)
 
 	for i in QTD_NUMEROS:
 		var l := Label3D.new()
@@ -125,3 +148,40 @@ func _process(delta: float) -> void:
 			_numeros[i].modulate.a = clamp(_vida_numeros[i] / 0.3, 0.0, 1.0)
 			if _vida_numeros[i] <= 0.0:
 				_numeros[i].visible = false
+
+
+# =========================================================================
+#  SONS
+# =========================================================================
+
+func _som(nome: String) -> AudioStream:
+	if not _cache_sons.has(nome):
+		var c := "res://assets/sons/%s.wav" % nome
+		_cache_sons[nome] = load(c) if ResourceLoader.exists(c) else null
+	return _cache_sons[nome]
+
+
+## Som no mundo 3D. variacao = quanto o tom pode variar (evita repetição robótica).
+func som_3d(nome: String, pos: Vector3, volume_db := 0.0, variacao := 0.06) -> void:
+	var s := _som(nome)
+	if s == null:
+		return
+	var p := _sons_3d[_i_som_3d]
+	_i_som_3d = (_i_som_3d + 1) % QTD_SONS_3D
+	p.stream = s
+	p.global_position = pos
+	p.volume_db = volume_db
+	p.pitch_scale = 1.0 + randf_range(-variacao, variacao)
+	p.play()
+
+
+## Som de interface (sem posição).
+func som_2d(nome: String, volume_db := 0.0) -> void:
+	var s := _som(nome)
+	if s == null:
+		return
+	var p := _sons_2d[_i_som_2d]
+	_i_som_2d = (_i_som_2d + 1) % QTD_SONS_2D
+	p.stream = s
+	p.volume_db = volume_db
+	p.play()

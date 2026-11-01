@@ -70,6 +70,7 @@ func _montar() -> void:
 	_opcoes("Skin", "skin", Config.NOMES_SKINS)
 	_opcoes_id("Arma principal", "arma_principal", CatalogoArmas.PRINCIPAIS)
 	_opcoes_id("Arma secundária", "arma_secundaria", CatalogoArmas.SECUNDARIAS)
+	_slider("Volume", "volume", 0.0, 1.0, 0.05)
 	_slider("Sensibilidade (toque)", "sens_toque", 0.2, 3.0, 0.05)
 	_slider("Sensibilidade (mouse)", "sens_mouse", 0.2, 3.0, 0.05)
 	_slider("Sensibilidade mirando / luneta", "sens_mira", 0.2, 1.5, 0.05)

@@ -93,6 +93,10 @@ enum Tipo { LOCAL, BOT, REMOTO }
 ## Cair com velocidade vertical maior que isto (correndo) já entra deslizando.
 @export var queda_para_deslize := 13.0
 
+@export_group("Aterrissagem")
+## Queda alta sem deslizar/rolar: tempo andando devagar para recuperar o equilíbrio.
+@export var tempo_recuperacao_queda := 0.25
+
 @export_group("Visual")
 @export var velocidade_giro_modelo := 16.0
 
@@ -148,6 +152,9 @@ var _inclinacao := Vector2.ZERO
 var _controle_reduzido := 0.0
 var _vel_lateral := 0.0          # deslize: velocidade para o lado (zigue-zague)    # após pulo de parede, o joystick quase não muda a trajetória  # inclinação visual do corpo (x = frente, y = lado)
 
+## Parkour (parede, beirada, transpor): scripts/jogador/parkour.gd
+var parkour: ControladorParkour
+
 @onready var visual: Node3D = $Visual
 @onready var camera_rig: CameraTPS = $CameraRig
 @onready var _colisao: CollisionShape3D = $Colisao
@@ -158,6 +165,7 @@ var modelo: Node
 
 
 func _ready() -> void:
+	parkour = ControladorParkour.new(self)
 	floor_snap_length = 0.35
 	floor_max_angle = deg_to_rad(46.0)
 	floor_constant_speed = true
@@ -348,11 +356,11 @@ func _physics_process(delta: float) -> void:
 		Modo.NORMAL:
 			_modo_normal(direcao, quer_deslizar, delta)
 		Modo.PAREDE:
-			_modo_parede(direcao, delta)
+			parkour.modo_parede(direcao, delta)
 		Modo.SUBINDO:
-			_modo_subindo(direcao, delta)
+			parkour.modo_subindo(direcao, delta)
 		Modo.ESCALANDO:
-			_modo_escalando(delta)
+			parkour.modo_escalando(delta)
 		Modo.ROLANDO:
 			_modo_rolando(direcao, delta)
 		Modo.DESLIZANDO:
@@ -393,11 +401,13 @@ func _modo_normal(direcao: Vector3, quer_deslizar: bool, delta: float) -> void:
 		var g := gravidade * (mult_gravidade_queda if velocity.y < 0.0 else 1.0)
 		velocity.y = max(velocity.y - g * delta, -velocidade_queda_max)
 
-	# Pulo / ações de parede / pulo duplo
+	# Pulo / transpor obstáculo / ações de parede / pulo duplo
 	if _buffer_pulo > 0.0:
+		if no_chao and parkour.tentar_transpor(direcao):
+			return
 		if _tempo_fora_do_chao <= tempo_coyote and not _pulando:
 			_pular(velocidade_pulo)
-		elif not no_chao and _tentar_parede(direcao):
+		elif not no_chao and parkour.tentar_parede(direcao):
 			_buffer_pulo = 0.0
 			return
 		elif not no_chao and _pulo_duplo_disponivel and _tempo_fora_do_chao > tempo_coyote:
@@ -409,6 +419,9 @@ func _modo_normal(direcao: Vector3, quer_deslizar: bool, delta: float) -> void:
 
 	# Movimento horizontal relativo à câmera
 	var alvo := direcao * velocidade_corrida * armas.mult_velocidade()  # joystick pela metade = andar devagar
+	if _recuperacao > 0.0:
+		_recuperacao -= delta
+		alvo *= 0.45  # recuperando o equilíbrio depois de uma queda alta
 	var horizontal := Vector3(velocity.x, 0.0, velocity.z)
 	var acel := aceleracao_ar
 	if _controle_reduzido > 0.0:
@@ -438,18 +451,29 @@ func _modo_normal(direcao: Vector3, quer_deslizar: bool, delta: float) -> void:
 	move_and_slide()
 
 	# Agarrar beirada automaticamente (no ar, empurrando contra a parede)
-	if not is_on_floor() and direcao.length_squared() > 0.25 and _tentar_beirada(direcao):
+	if not is_on_floor() and direcao.length_squared() > 0.25 and parkour.tentar_beirada(direcao):
 		return
+
+	# Passos (som) correndo no chão
+	if is_on_floor():
+		_dist_passo += Vector2(velocity.x, velocity.z).length() * delta
+		if _dist_passo > 2.1:
+			_dist_passo = 0.0
+			_som("passo", -14.0, 0.15)
 
 	# Aterrissou
 	if is_on_floor() and estava_no_ar:
 		var vel_h := Vector2(velocity.x, velocity.z).length()
+		if _vel_queda_anterior < -6.0:
+			_som("aterrissar", clampf(-18.0 - _vel_queda_anterior * 0.6, -14.0, -2.0))
 		if _buffer_rolar > 0.0 and _recarga_rolar <= 0.0:
 			_iniciar_rolamento(direcao)
 			return
 		if _vel_queda_anterior < -queda_para_deslize and vel_h > velocidade_min_deslize:
 			_iniciar_deslize()
 			return
+		if _vel_queda_anterior < -12.0:
+			_recuperacao = tempo_recuperacao_queda
 
 	# Rolar / deslizar no chão
 	if is_on_floor():
@@ -461,171 +485,10 @@ func _modo_normal(direcao: Vector3, quer_deslizar: bool, delta: float) -> void:
 
 func _pular(forca: float) -> void:
 	velocity.y = forca
+	_som("pulo", -8.0)
 	_buffer_pulo = 0.0
 	_tempo_fora_do_chao = tempo_coyote + 1.0  # impede pulo extra pelo coyote
 	_pulando = true
-
-
-# =========================================================================
-#  PAREDE: grudar e correr pela parede / subir parede
-# =========================================================================
-
-## Procura parede ao lado (wall run) ou à frente (subir). Devolve true se grudou.
-func _tentar_parede(direcao: Vector3) -> bool:
-	if _recarga_parede > 0.0:
-		return false
-	var frente := _frente_modelo()
-	if direcao.length_squared() > 0.04:
-		frente = direcao.normalized()
-	var lado := frente.cross(Vector3.UP).normalized()  # direita
-
-	# 1) De frente para a parede: corre parede acima.
-	var hit_frente := _raio_parede(frente, RAIO + 0.55)
-	if hit_frente and frente.dot(-hit_frente.normal) > 0.75:
-		_normal_parede = hit_frente.normal
-		velocity = Vector3(0, velocidade_subida_parede, 0)
-		_mudar_modo(Modo.SUBINDO)
-		return true
-
-	# 2) Ao lado: corre pela parede.
-	for s in [1.0, -1.0]:
-		var hit := _raio_parede(lado * s, RAIO + 0.8)  # generoso: no celular é difícil acertar a distância
-		if hit:
-			_grudar_na_parede(hit.normal, frente)
-			return true
-	# 3) Parede na diagonal da frente (chegou meio torto).
-	for s in [1.0, -1.0]:
-		var diag: Vector3 = (frente + lado * s).normalized()
-		var hit := _raio_parede(diag, RAIO + 0.6)
-		if hit:
-			_grudar_na_parede(hit.normal, frente)
-			return true
-	return false
-
-
-func _grudar_na_parede(normal: Vector3, frente: Vector3) -> void:
-	_normal_parede = normal
-	# Direção ao longo da parede, para o lado em que o jogador já ia.
-	var tangente := normal.cross(Vector3.UP).normalized()
-	var referencia := Vector3(velocity.x, 0, velocity.z)
-	if referencia.length_squared() < 1.0:
-		referencia = frente
-	if tangente.dot(referencia) < 0.0:
-		tangente = -tangente
-	_direcao_parede = tangente
-	var vel_h := maxf(referencia.length(), velocidade_parede)
-	velocity = tangente * vel_h + Vector3.UP * impulso_inicial_parede
-	_pulo_duplo_disponivel = true
-	_mudar_modo(Modo.PAREDE)
-
-
-func _modo_parede(direcao: Vector3, delta: float) -> void:
-	# Pulo de parede: para longe da parede, mantendo o embalo.
-	if _buffer_pulo > 0.0:
-		_buffer_pulo = 0.0
-		var saida := (_normal_parede * pulo_parede_lateral + _direcao_parede * velocidade_parede * 0.85)
-		velocity = Vector3(saida.x, pulo_parede_vertical, saida.z)
-		_recarga_parede = 0.2
-		_controle_reduzido = 0.35
-		_pulando = true
-		_tempo_fora_do_chao = tempo_coyote + 1.0
-		_mudar_modo(Modo.NORMAL)
-		return
-
-	# Escorrega devagar (gravidade reduzida) e corre ao longo da parede.
-	velocity.y = max(velocity.y - gravidade * gravidade_parede * delta, -3.0)
-	var vel_h := maxf(Vector2(velocity.x, velocity.z).length(), velocidade_parede)
-	velocity.x = _direcao_parede.x * vel_h - _normal_parede.x * 1.5  # leve "puxão" para a parede
-	velocity.z = _direcao_parede.z * vel_h - _normal_parede.z * 1.5
-	move_and_slide()
-
-	# Saída: acabou o tempo, a parede acabou, encostou no chão ou puxou para longe.
-	var ainda_tem_parede := _raio_parede(-_normal_parede, RAIO + 0.7)
-	var puxando_para_fora := direcao.dot(_normal_parede) > 0.7
-	if ainda_tem_parede:
-		_normal_parede = ainda_tem_parede.normal
-	if is_on_floor() or not ainda_tem_parede or _tempo_modo > duracao_parede or puxando_para_fora:
-		_recarga_parede = 0.25
-		velocity += _normal_parede * 1.0
-		_mudar_modo(Modo.NORMAL)
-
-
-func _modo_subindo(direcao: Vector3, delta: float) -> void:
-	velocity = -_normal_parede * 1.0 + Vector3.UP * velocidade_subida_parede * (1.0 - _tempo_modo / duracao_subida_parede * 0.4)
-	move_and_slide()
-	if _tentar_beirada(-_normal_parede):
-		return
-	# Pulo durante a subida: salto para trás (vira de costas para a parede).
-	if _buffer_pulo > 0.0 and _tempo_modo > 0.08:
-		_buffer_pulo = 0.0
-		velocity = _normal_parede * pulo_parede_lateral + Vector3.UP * pulo_parede_vertical
-		_recarga_parede = 0.2
-		_controle_reduzido = 0.35
-		_mudar_modo(Modo.NORMAL)
-		return
-	if _tempo_modo > duracao_subida_parede or not _raio_parede(-_normal_parede, RAIO + 0.7):
-		velocity = _normal_parede * 1.5 + Vector3.UP * 1.0
-		_recarga_parede = 0.3
-		_mudar_modo(Modo.NORMAL)
-
-
-## Raio horizontal na altura do peito procurando parede "de pé".
-func _raio_parede(dir: Vector3, alcance: float) -> Dictionary:
-	var origem := global_position + Vector3.UP * 1.0
-	var q := PhysicsRayQueryParameters3D.create(origem, origem + dir * alcance, 1)
-	q.exclude = [get_rid()]
-	var hit := get_world_3d().direct_space_state.intersect_ray(q)
-	if hit and abs(hit.normal.y) < 0.3:
-		return hit
-	return {}
-
-
-# =========================================================================
-#  ESCALAR BEIRADA
-# =========================================================================
-
-## Se houver uma beirada ao alcance à frente, começa a escalar. Devolve true se começou.
-func _tentar_beirada(direcao: Vector3) -> bool:
-	var frente := Vector3(direcao.x, 0, direcao.z).normalized()
-	var parede := _raio_parede(frente, RAIO + 0.45)
-	if not parede or frente.dot(-parede.normal) < 0.6:
-		return false
-	# Raio de cima para baixo, logo depois da borda da parede.
-	var ponto: Vector3 = parede.position - parede.normal * 0.45
-	var topo_busca := global_position.y + alcance_beirada + 0.1
-	var q := PhysicsRayQueryParameters3D.create(
-		Vector3(ponto.x, topo_busca, ponto.z), Vector3(ponto.x, global_position.y + 0.4, ponto.z), 1)
-	q.exclude = [get_rid()]
-	var chao := get_world_3d().direct_space_state.intersect_ray(q)
-	if not chao or chao.normal.y < 0.75:
-		return false
-	var destino: Vector3 = chao.position + Vector3.UP * 0.05
-	if not _espaco_livre(destino, ALTURA_EM_PE):
-		return false
-	_escalada_inicio = global_position
-	_escalada_fim = destino
-	velocity = Vector3.ZERO
-	_mudar_modo(Modo.ESCALANDO)
-	return true
-
-
-func _modo_escalando(_delta: float) -> void:
-	# Movimento guiado em "L": primeiro sobe, depois avança por cima da borda.
-	var t := clampf(_tempo_modo / duracao_escalada, 0.0, 1.0)
-	var sobe := ease(clampf(t / 0.6, 0.0, 1.0), 0.6)
-	var avanca := ease(clampf((t - 0.35) / 0.65, 0.0, 1.0), 1.6)
-	var p := _escalada_inicio
-	p.y = lerpf(_escalada_inicio.y, _escalada_fim.y, sobe)
-	p.x = lerpf(_escalada_inicio.x, _escalada_fim.x, avanca)
-	p.z = lerpf(_escalada_inicio.z, _escalada_fim.z, avanca)
-	global_position = p
-	if t >= 1.0:
-		# Sai já andando para a frente (não perde o ritmo).
-		var frente := (_escalada_fim - _escalada_inicio)
-		frente.y = 0
-		velocity = frente.normalized() * velocidade_corrida * 0.7
-		_pulo_duplo_disponivel = true
-		_mudar_modo(Modo.NORMAL)
 
 
 # =========================================================================
@@ -634,6 +497,7 @@ func _modo_escalando(_delta: float) -> void:
 
 func _iniciar_rolamento(direcao: Vector3) -> void:
 	_buffer_rolar = 0.0
+	_som("rolar", -6.0)
 	_dir_acao = direcao.normalized() if direcao.length_squared() > 0.04 else _frente_modelo()
 	_mudar_modo(Modo.ROLANDO)
 	visual.rotation.y = atan2(-_dir_acao.x, -_dir_acao.z)  # vira na hora para onde rola
@@ -667,6 +531,7 @@ func _modo_rolando(direcao: Vector3, delta: float) -> void:
 
 func _iniciar_deslize() -> void:
 	_buffer_deslizar = 0.0
+	_som("deslizar", -7.0)
 	var h := Vector3(velocity.x, 0, velocity.z)
 	_dir_acao = h.normalized() if h.length_squared() > 0.1 else _frente_modelo()
 	var v := maxf(h.length() * bonus_deslize, velocidade_corrida * bonus_deslize)
@@ -720,6 +585,13 @@ func _modo_deslizando(direcao: Vector3, delta: float) -> void:
 # =========================================================================
 #  UTILIDADES
 # =========================================================================
+
+var _dist_passo := 0.0
+var _recuperacao := 0.0
+## Sons do corpo (pulo, passo, rolamento...). Mais baixos para os outros personagens.
+func _som(nome: String, volume_db := 0.0, variacao := 0.08) -> void:
+	Efeitos.som_3d(nome, global_position + Vector3.UP * 0.3, volume_db - (0.0 if controlado_localmente else 4.0), variacao)
+
 
 func _frente_modelo() -> Vector3:
 	return Vector3(0, 0, -1).rotated(Vector3.UP, visual.rotation.y)
@@ -783,13 +655,15 @@ func _atualizar_estado() -> void:
 	match modo:
 		Modo.PAREDE: novo = &"parede"
 		Modo.SUBINDO: novo = &"subindo_parede"
-		Modo.ESCALANDO: novo = &"escalando"
+		Modo.ESCALANDO: novo = &"transpondo" if parkour.transpondo else &"escalando"
 		Modo.ROLANDO: novo = &"rolando"
 		Modo.DESLIZANDO: novo = &"deslizando"
 		Modo.MORTO: novo = &"morto"
 		_:
 			if not is_on_floor():
 				novo = &"pulando" if velocity.y > 0.0 else &"caindo"
+			elif _recuperacao > 0.0:
+				novo = &"aterrissando"
 			elif vel_h > 0.4:
 				novo = &"correndo"
 			else:

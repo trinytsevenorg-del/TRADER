@@ -40,6 +40,7 @@ func _ao_abate(matador: String, vitima: String, arma: String, cabeca: bool) -> v
 
 
 func _ao_dano(_qtd: float, atacante: Node, _ponto: Vector3, _cabeca: bool) -> void:
+	Efeitos.som_2d("dano", -8.0)
 	if atacante is Node3D and atacante != _jogador:
 		var d: Vector3 = atacante.global_position - _jogador.global_position
 		_danos.append({"angulo": atan2(-d.x, -d.z), "tempo": 1.2})

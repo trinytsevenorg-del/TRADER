@@ -184,5 +184,34 @@ func _rodar() -> void:
 	await _esperar(1.5)
 	_checar("levantou depois de sair do túnel (%s)" % _j.estado, _j.estado != &"deslizando")
 
+	# 8) Transpor obstáculo baixo (mureta de 1,1 m em z = -4, x de -30 a -26)
+	await _preparar(Vector3(-28, 0.1, 0.5), 0.0)
+	Controles.joystick = Vector2(0, -1)
+	var viu_transpor := false
+	var vel_depois := 0.0
+	for i in 70:
+		if i == 27: Input.action_press("pular")
+		if i == 29: Input.action_release("pular")
+		await get_tree().physics_frame
+		if _j.estado == &"transpondo":
+			viu_transpor = true
+		if i == 60:
+			vel_depois = Vector2(_j.velocity.x, _j.velocity.z).length()
+	Controles.joystick = Vector2.ZERO
+	_checar("transpôs a mureta (estado visto: %s, z=%.2f)" % [viu_transpor, _j.global_position.z],
+		viu_transpor and _j.global_position.z < -4.6 and _j.global_position.y < 0.4)
+	_checar("manteve a velocidade ao transpor (%.1f m/s)" % vel_depois, vel_depois > 5.5)
+	await _esperar(0.5)
+
+	# 9) Queda alta parado: recupera o equilíbrio (aterrissando) e depois volta ao normal
+	await _preparar(Vector3(0, 8.0, 10), 0.0)
+	var viu_aterrissar := false
+	for i in 120:
+		await get_tree().physics_frame
+		if _j.estado == &"aterrissando":
+			viu_aterrissar = true
+	_checar("queda alta: recuperação na aterrissagem", viu_aterrissar)
+	_checar("depois da recuperação volta ao normal (%s)" % _j.estado, _j.estado == &"parado")
+
 	print("RESULTADO: %d falha(s)" % _falhas)
 	get_tree().quit(_falhas)

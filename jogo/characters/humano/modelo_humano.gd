@@ -31,13 +31,14 @@ const ANIM := {
 	"parado": "Idle", "parado_arma": "Pistol_Idle", "andar": "Walk", "trote": "Jog_Fwd",
 	"correr": "Sprint", "pulo": "Jump", "parede": "Sprint", "subindo_parede": "NinjaJump_Start",
 	"escalar": "ClimbUp_1m", "rolar": "Roll", "deslizar": "Slide", "morrer": "Death01",
+	"aterrissar": "Jump_Land", "transpor": "NinjaJump_Start",
 	"tiro": "Pistol_Shoot", "recarga": "Pistol_Reload",
 }
 ## Tempo de transição entre animações (crossfade), em segundos.
 const MISTURA := 0.15
 ## Animações de locomoção usadas (nomes da biblioteca).
 const LOCOMOCAO := ["parado", "parado_arma", "andar", "trote", "correr", "pulo", "parede",
-	"subindo_parede", "escalar", "rolar", "deslizar", "morrer"]
+	"subindo_parede", "escalar", "rolar", "deslizar", "morrer", "aterrissar", "transpor"]
 ## Ossos que NÃO entram na mira (ficam com a locomoção).
 ## Aceita os nomes do esqueleto atual (estilo UE) e os do perfil humanoide da Godot
 ## (usado quando você reprojeta animações do Mixamo no importador; veja o README).
@@ -313,6 +314,10 @@ func atualizar_animacao(estado: StringName, fator_vel: float, mirando: bool) -> 
 			_tocar("deslizar", 1.0)
 		&"morto":
 			_tocar("morrer")
+		&"transpondo":
+			_tocar("transpor", 1.6)
+		&"aterrissando":
+			_tocar("aterrissar", 2.2)
 		_:
 			_tocar("parado_arma" if (mirando or _arma != null) else "parado")
 

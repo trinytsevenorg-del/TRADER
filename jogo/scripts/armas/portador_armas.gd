@@ -110,6 +110,8 @@ func _equipar_atual() -> void:
 	if d == null:
 		return
 	equipando = d.tempo_equipar
+	if dono.is_inside_tree():
+		Efeitos.som_3d("troca_arma", dono.global_position + Vector3.UP * 1.2, -6.0)
 	# Troca o modelo na mão do personagem.
 	reprender_modelo()
 	arma_trocada.emit(d)
@@ -227,6 +229,8 @@ func _processar_gatilho(d: DadosArma, s: Slot) -> void:
 
 	if s.pente <= 0:
 		if apertou or (gatilho and d.modo == DadosArma.Modo.AUTO):
+			if apertou:
+				Efeitos.som_3d("vazio", dono.global_position + Vector3.UP * 1.3, -6.0)
 			_iniciar_recarga()  # recarrega sozinho ao tentar atirar sem bala
 		return
 
@@ -263,6 +267,7 @@ func _iniciar_recarga() -> void:
 		return
 	recarregando = s.dados.tempo_recarga
 	_rajada_restante = 0
+	Efeitos.som_3d("recarga", dono.global_position + Vector3.UP * 1.2, -4.0)
 	recarga_iniciada.emit(recarregando)
 
 
@@ -310,6 +315,15 @@ func _disparar(d: DadosArma, s: Slot) -> void:
 		q.collide_with_areas = false
 		var hit := espaco.intersect_ray(q)
 		var fim: Vector3 = hit.position if hit else origem + dir * d.alcance_maximo
+		# O tiro sai do corpo/arma, não da câmera: se a câmera "enxerga por cima"
+		# de um obstáculo que o corpo não enxerga, a bala bate no obstáculo.
+		if dono.controlado_localmente:
+			var q2 := PhysicsRayQueryParameters3D.create(peito, fim, 1)
+			q2.exclude = [dono.get_rid()]
+			var bloqueio := espaco.intersect_ray(q2)
+			if bloqueio and bloqueio.position.distance_to(fim) > 0.3:
+				hit = bloqueio
+				fim = bloqueio.position
 		if p < 3:  # escopeta: só alguns rastros (economia)
 			Efeitos.rastro(cano, fim, d.cor_rastro)
 		if p == 0:
@@ -338,6 +352,7 @@ func _disparar(d: DadosArma, s: Slot) -> void:
 		dono.yaw_mira += deg_to_rad(randf_range(-1.0, 1.0) * d.recuo_horizontal * 0.5)
 	if modelo_arma:
 		modelo_arma.disparou(0.05 + d.recuo_vertical * 0.015)
+	Efeitos.som_3d(d.nome_som_tiro(), cano, 0.0 if dono.controlado_localmente else -3.0)
 	disparou.emit(d)
 
 

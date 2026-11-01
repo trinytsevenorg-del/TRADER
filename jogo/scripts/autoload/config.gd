@@ -23,6 +23,7 @@ var valores := {
 	"aim_assist": 0.5,       # 0 = desligado, 1 = máximo (usado a partir da etapa 3)
 	"qualidade": 1,          # 0 = baixa, 1 = média, 2 = alta
 	"mostrar_fps": true,
+	"volume": 0.8,           # volume geral (0 a 1)
 	"forcar_toque": false,   # mostra os controles de toque também no PC
 	"personagem": 0,         # 0 = masculino, 1 = feminino
 	"skin": 0,               # variação visual do personagem
@@ -37,6 +38,11 @@ var valores := {
 func _ready() -> void:
 	carregar()
 	aplicar_graficos()
+	aplicar_volume()
+
+
+func aplicar_volume() -> void:
+	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(float(valores["volume"]), 0.0001)))
 
 
 func obter(chave: String):
@@ -49,6 +55,8 @@ func definir(chave: String, valor) -> void:
 	valores[chave] = valor
 	if chave == "qualidade":
 		aplicar_graficos()
+	if chave == "volume":
+		aplicar_volume()
 	alterado.emit(chave, valor)
 
 

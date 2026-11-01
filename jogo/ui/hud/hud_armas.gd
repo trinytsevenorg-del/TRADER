@@ -27,6 +27,7 @@ func definir_jogador(j: Jogador) -> void:
 	_jogador = j
 	_portador = _jogador.get_node("Armas")
 	_portador.acertou.connect(func(_alvo, _dano, cabeca, abate):
+		Efeitos.som_2d("abate" if abate else ("acerto_cabeca" if cabeca else "acerto"), -6.0)
 		_marcador = 0.18 if not abate else 0.4
 		_marcador_abate = abate
 		_marcador_cabeca = cabeca)

@@ -382,6 +382,8 @@ func _efeito_tiro(nome: String, de: Vector3, ate: Vector3) -> void:
 	if j == null or not is_instance_valid(j):
 		return
 	Efeitos.rastro(de, ate, j.armas.arma().cor_rastro if j.armas.arma() else Color.WHITE)
+	if j.armas.arma():
+		Efeitos.som_3d(j.armas.arma().nome_som_tiro(), de, -3.0)
 	if j.armas.modelo_arma:
 		j.armas.modelo_arma.disparou()
 	j.armas.tempo_desde_tiro = 0.0  # bots "ouvem" o tiro

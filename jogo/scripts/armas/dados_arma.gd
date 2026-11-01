@@ -74,8 +74,10 @@ enum Categoria { PISTOLA, SUBMETRALHADORA, FUZIL, ESCOPETA, METRALHADORA, SNIPER
 ## Multiplicador da velocidade de corrida segurando esta arma.
 @export var mult_velocidade := 1.0
 
-@export_group("Visual")
+@export_group("Visual e som")
 @export var cor_rastro := Color(1.0, 0.85, 0.4)
+## Nome do som do tiro (assets/sons/<nome>.wav). Vazio = padrão do tipo da arma.
+@export var som_tiro := ""
 
 @export_group("Empunhadura (ajuste individual)")
 ## Ajuste fino da posição da arma, em metros, no espaço do personagem:
@@ -92,6 +94,18 @@ enum Categoria { PISTOLA, SUBMETRALHADORA, FUZIL, ESCOPETA, METRALHADORA, SNIPER
 ## Armas longas: coronha no ombro e as duas mãos por IK. Pistolas: na mão direita.
 func usa_ombro() -> bool:
 	return categoria != Categoria.PISTOLA
+
+
+func nome_som_tiro() -> String:
+	if som_tiro != "":
+		return som_tiro
+	match categoria:
+		Categoria.PISTOLA: return "tiro_revolver" if dano >= 40.0 else "tiro_pistola"
+		Categoria.SUBMETRALHADORA: return "tiro_smg"
+		Categoria.ESCOPETA: return "tiro_escopeta"
+		Categoria.METRALHADORA: return "tiro_lmg"
+		Categoria.SNIPER: return "tiro_sniper"
+	return "tiro_fuzil"
 
 
 func intervalo() -> float:
