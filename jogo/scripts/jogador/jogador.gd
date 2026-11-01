@@ -170,6 +170,9 @@ func _ready() -> void:
 	armas.disparou.connect(func(d: DadosArma):
 		if modelo and modelo.has_method("tocar_tiro") and d.intervalo() > 0.2:
 			modelo.tocar_tiro())
+	armas.arma_trocada.connect(func(d: DadosArma):
+		if modelo and modelo.has_method("animar_troca"):
+			modelo.animar_troca.call_deferred(d.tempo_equipar))
 	armas.recarga_iniciada.connect(func(t: float):
 		if modelo and modelo.has_method("tocar_recarga"):
 			modelo.tocar_recarga(t))

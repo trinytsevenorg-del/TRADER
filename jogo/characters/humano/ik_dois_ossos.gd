@@ -21,6 +21,11 @@ var alvo: Node3D
 var ajuste_mao := Transform3D.IDENTITY
 ## Direção (espaço do esqueleto) para onde o cotovelo tende a apontar.
 @export var dica_cotovelo := Vector3(0, -1, 0)
+## Fecha os dedos desta mão copiando a pose dos dedos da OUTRA mão (que já
+## segura o cabo na animação). Pares [osso_destino, osso_origem].
+var copiar_dedos: Array = []
+## Como converter a rotação local de um lado para o outro (espelho): multiplica x,y,z,w.
+var espelho_dedos := Vector4(1, 1, 1, 1)
 
 var _i_braco := -1
 var _i_antebraco := -1
@@ -82,7 +87,11 @@ func _process_modification() -> void:
 	var g_mao2 := esq.get_bone_global_pose(_i_mao)
 	var rot_ante := _rotacao_entre(g_mao2.origin - g_ante2.origin, t - g_ante2.origin)
 	_definir_global(esq, _i_antebraco, Transform3D(Basis(rot_ante) * g_ante2.basis, g_ante2.origin))
-	# 3) Orientação da mão (empunhadura)
+	# 3) Dedos fechados na arma (cópia espelhada da outra mão)
+	for par in copiar_dedos:
+		var q := esq.get_bone_pose_rotation(par[1])
+		esq.set_bone_pose_rotation(par[0], Quaternion(q.x * espelho_dedos.x, q.y * espelho_dedos.y, q.z * espelho_dedos.z, q.w * espelho_dedos.w).normalized())
+	# 4) Orientação da mão (empunhadura)
 	if girar_mao:
 		var g_mao3 := esq.get_bone_global_pose(_i_mao)
 		_definir_global(esq, _i_mao, Transform3D(alvo_xf.basis.orthonormalized().scaled(g_mao3.basis.get_scale()), g_mao3.origin))

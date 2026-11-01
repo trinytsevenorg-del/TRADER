@@ -120,7 +120,7 @@ func reprender_modelo() -> void:
 	var d := arma()
 	var modelo_personagem = dono.get("modelo")
 	if d and modelo_personagem and modelo_personagem.has_method("prender_arma"):
-		modelo_arma = modelo_personagem.prender_arma(d.cena_modelo)
+		modelo_arma = modelo_personagem.prender_arma(d.cena_modelo, d)
 		_aplicar_skin(d)
 
 

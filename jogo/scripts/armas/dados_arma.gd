@@ -77,6 +77,22 @@ enum Categoria { PISTOLA, SUBMETRALHADORA, FUZIL, ESCOPETA, METRALHADORA, SNIPER
 @export_group("Visual")
 @export var cor_rastro := Color(1.0, 0.85, 0.4)
 
+@export_group("Empunhadura (ajuste individual)")
+## Ajuste fino da posição da arma, em metros, no espaço do personagem:
+## x = para a direita, y = para cima, z = para a frente.
+## Armas longas ficam com a coronha no ombro direito; pistolas na mão.
+@export var ajuste_posicao := Vector3.ZERO
+## Ajuste fino da rotação (graus): x = levantar/abaixar o cano, y = virar, z = inclinar.
+@export var ajuste_rotacao := Vector3.ZERO
+@export var ajuste_escala := 1.0
+## Quanto a arma abaixa fora da mira ("pronto baixo"), em graus.
+@export var angulo_pronto_baixo := 15.0
+
+
+## Armas longas: coronha no ombro e as duas mãos por IK. Pistolas: na mão direita.
+func usa_ombro() -> bool:
+	return categoria != Categoria.PISTOLA
+
 
 func intervalo() -> float:
 	return 60.0 / max(cadencia, 1.0)

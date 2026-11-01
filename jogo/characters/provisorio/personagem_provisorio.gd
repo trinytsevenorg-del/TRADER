@@ -116,7 +116,7 @@ func definir_mira(peso: float, _pitch: float) -> void:
 
 
 var _arma: Node3D
-func prender_arma(cena: PackedScene) -> Node3D:
+func prender_arma(cena: PackedScene, _dados = null) -> Node3D:
 	if _arma:
 		_arma.queue_free()
 	if cena == null:

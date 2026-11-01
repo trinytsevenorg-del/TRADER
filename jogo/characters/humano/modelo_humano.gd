@@ -48,6 +48,11 @@ const OSSOS_PERNAS := ["root", "pelvis", "thigh_l", "calf_l", "foot_l", "ball_l"
 const OSSO_MAO := ["hand_r", "RightHand"]
 const OSSO_DEDO := ["middle_01_r", "RightMiddleProximal"]
 const OSSO_CABECA := ["Head", "head"]
+const OSSO_PEITO := ["spine_03", "UpperChest", "Chest"]
+const BRACO_D := [["upperarm_r", "RightUpperArm"], ["lowerarm_r", "RightLowerArm"], ["hand_r", "RightHand"]]
+const BRACO_E := [["upperarm_l", "LeftUpperArm"], ["lowerarm_l", "LeftLowerArm"], ["hand_l", "LeftHand"]]
+## Estados em que as mãos soltam a arma (IK desliga suave).
+const ESTADOS_SEM_IK := [&"rolando", &"escalando", &"subindo_parede", &"morto"]
 
 
 ## Primeiro osso que existir na lista (para aceitar esqueletos com nomes diferentes).
@@ -85,6 +90,23 @@ var _peso_mira_alvo := 0.0
 var _anexo_mao: BoneAttachment3D
 var _calibracao_mao := Transform3D.IDENTITY
 var _arma: ModeloArma
+# Armas longas: encaixe no peito + IK das duas mãos
+var _anexo_peito: BoneAttachment3D
+var _pose_peito_mira := Transform3D.IDENTITY
+var _ombro_d_mira := Vector3.ZERO
+var _ik_d: IKDoisOssos
+var _ik_e: IKDoisOssos
+var _arma_longa := false
+var _base_arma_mira := Transform3D.IDENTITY
+var _base_arma_baixa := Transform3D.IDENTITY
+var _ik_permitido := true
+var _troca_t := 0.0
+var _troca_total := 0.0
+var _base_arma_mao := Transform3D.IDENTITY
+var _pitch_mira_rad := 0.0
+var _ajuste_rot_arma := Basis.IDENTITY
+var _escala_arma := 1.0
+var _angulo_baixo := 15.0
 
 
 func _ready() -> void:
@@ -226,6 +248,41 @@ func _tocar(nome: String, velocidade: float = 1.0) -> void:
 func _process(delta: float) -> void:
 	_peso_mira = move_toward(_peso_mira, _peso_mira_alvo, delta * 8.0)
 	_arvore.set("parameters/mistura/blend_amount", _peso_mira)
+	_atualizar_arma(delta)
+
+
+## Posição da arma (pronto baixo <-> mirando, animação de troca) e força do IK.
+func _atualizar_arma(delta: float) -> void:
+	_troca_t = maxf(_troca_t - delta, 0.0)
+	var k_troca := ease(_troca_t / _troca_total, 0.5) if _troca_total > 0.0 else 0.0
+	var abaixar := Transform3D(Basis(Vector3.RIGHT, -1.1 * k_troca), Vector3(0, -0.12 * k_troca, 0))
+	if _arma and is_instance_valid(_arma):
+		if _arma_longa:
+			# POSIÇÃO: presa ao peito (acompanha o balanço do corpo nas animações).
+			var xf := _base_arma_baixa.interpolate_with(_base_arma_mira, _peso_mira)
+			_arma.transform = xf
+			# ORIENTAÇÃO: frente do personagem + inclinação da mira (não herda a
+			# curvatura do tronco de cada animação). Mirando, aponta para a mira.
+			var mao_local: Vector3 = (_arma.get_node("Mao") as Node3D).position
+			var mao_g := _arma.global_transform * mao_local
+			var pitch := lerpf(-deg_to_rad(_angulo_baixo), _pitch_mira_rad, _peso_mira)
+			var base_g := _esqueleto.global_basis.orthonormalized() * Basis(Vector3.UP, PI) \
+				* Basis(Vector3.RIGHT, pitch) * _ajuste_rot_arma * abaixar.basis
+			base_g = base_g.scaled(Vector3.ONE * _escala_arma)
+			_arma.global_transform = Transform3D(base_g, mao_g + abaixar.origin - base_g * mao_local)
+		else:
+			_arma.transform = _base_arma_mao * abaixar
+	var alvo := 1.0 if (_arma_longa and _ik_permitido and _arma != null) else 0.0
+	for ik in [_ik_d, _ik_e]:
+		if ik:
+			ik.influence = move_toward(ik.influence, alvo, delta * 6.0)
+			ik.active = ik.influence > 0.001
+
+
+## Arma descendo e subindo ao trocar (dura o tempo de equipar da arma).
+func animar_troca(tempo: float) -> void:
+	_troca_total = maxf(tempo, 0.05)
+	_troca_t = _troca_total
 
 
 ## Escolhe a animação conforme o estado do personagem.
@@ -233,6 +290,7 @@ func _process(delta: float) -> void:
 ##  animação parecida + inclinação do corpo feita pelo script do jogador. Na etapa 6
 ##  dá para colocar animações do Mixamo no lugar; veja o README.)
 func atualizar_animacao(estado: StringName, fator_vel: float, mirando: bool) -> void:
+	_ik_permitido = not ESTADOS_SEM_IK.has(estado)
 	match estado:
 		&"correndo":
 			if fator_vel < 0.35:
@@ -262,6 +320,7 @@ func atualizar_animacao(estado: StringName, fator_vel: float, mirando: bool) -> 
 ## Tronco e braços mirando. peso 0..1; pitch -1 (baixo) .. 1 (cima).
 func definir_mira(peso: float, pitch: float) -> void:
 	_peso_mira_alvo = peso
+	_pitch_mira_rad = clampf(pitch, -1.0, 1.0) * deg_to_rad(60.0)
 	_arvore.set("parameters/mira/blend_position", clamp(pitch, -1.0, 1.0))
 
 
@@ -290,6 +349,29 @@ func _calibrar_mao() -> void:
 	_anexo_mao.bone_name = _esqueleto.get_bone_name(osso)
 	_esqueleto.add_child(_anexo_mao)
 
+	# Encaixe no peito (armas longas) e ombro direito, na pose de mira
+	var peito := _osso(OSSO_PEITO)
+	var ombro := _osso(BRACO_D[0])
+	if peito >= 0 and ombro >= 0:
+		_pose_peito_mira = _pose_global_na_animacao(anim, peito)
+		_ombro_d_mira = _pose_global_na_animacao(anim, ombro).origin
+		_anexo_peito = BoneAttachment3D.new()
+		_anexo_peito.bone_name = _esqueleto.get_bone_name(peito)
+		_esqueleto.add_child(_anexo_peito)
+		# IK das duas mãos (desligado até prender uma arma longa)
+		_ik_d = _novo_ik(BRACO_D, Vector3(-0.6, -1, 0))
+		_ik_d.girar_mao = true
+		_ik_d.ajuste_mao = _calibracao_mao.affine_inverse()
+		_ik_e = _novo_ik(BRACO_E, Vector3(0.6, -1, 0))
+		# Mão de apoio fecha os dedos no guarda-mão (copia a pose da mão do cabo)
+		for nome_dedo in ["index", "middle", "ring", "pinky", "thumb"]:
+			for k in ["01", "02", "03"]:
+				var e := _esqueleto.find_bone("%s_%s_l" % [nome_dedo, k])
+				var d := _esqueleto.find_bone("%s_%s_r" % [nome_dedo, k])
+				if e >= 0 and d >= 0:
+					_ik_e.copiar_dedos.append([e, d])
+
+
 
 ## Pose global (no espaço do esqueleto) de um osso no primeiro quadro de uma animação.
 func _pose_global_na_animacao(anim: Animation, osso: int) -> Transform3D:
@@ -316,18 +398,79 @@ func _pose_global_na_animacao(anim: Animation, osso: int) -> Transform3D:
 	return t
 
 
-func prender_arma(cena: PackedScene) -> ModeloArma:
+func _novo_ik(nomes: Array, dica: Vector3) -> IKDoisOssos:
+	var ik := IKDoisOssos.new()
+	var n := []
+	for opcoes in nomes:
+		var i := _osso(opcoes)
+		n.append(_esqueleto.get_bone_name(i) if i >= 0 else "")
+	ik.configurar(n[0], n[1], n[2])
+	ik.dica_cotovelo = dica
+	ik.influence = 0.0
+	_esqueleto.add_child(ik)
+	return ik
+
+
+## Prende a arma. Pistolas: na mão direita (calibrada pela pose de mira).
+## Armas longas: no peito, com a coronha no ombro direito; as mãos vão até o
+## cabo (Mao) e o guarda-mão (MaoEsquerda) por IK. "dados" traz o ajuste fino.
+func prender_arma(cena: PackedScene, dados: DadosArma = null) -> ModeloArma:
 	if _arma:
 		_arma.queue_free()
 		_arma = null
+	_arma_longa = false
 	if cena == null or _anexo_mao == null:
 		return null
 	_arma = cena.instantiate() as ModeloArma
-	_anexo_mao.add_child(_arma)
-	# Posiciona pelo ponto "Mao" da arma.
 	var mao_local: Transform3D = (_arma.get_node("Mao") as Node3D).transform
-	_arma.transform = _calibracao_mao * mao_local.affine_inverse()
+	var aj_rot := Basis.IDENTITY
+	var aj_pos := Vector3.ZERO
+	var aj_esc := 1.0
+	if dados:
+		aj_rot = Basis.from_euler(dados.ajuste_rotacao * (PI / 180.0))
+		# ajuste no espaço do personagem (x direita, y cima, z frente) -> esqueleto (frente = +Z, direita = -X)
+		aj_pos = Vector3(-dados.ajuste_posicao.x, dados.ajuste_posicao.y, dados.ajuste_posicao.z)
+		aj_esc = dados.ajuste_escala
+	_ajuste_rot_arma = aj_rot
+	_escala_arma = aj_esc
+	if dados:
+		_angulo_baixo = dados.angulo_pronto_baixo
+	if dados and dados.usa_ombro() and _anexo_peito:
+		_anexo_peito.add_child(_arma)
+		var traseira := _comprimento_traseiro(_arma)
+		# Cabo na frente do ombro: a coronha (traseira) encosta no ombro.
+		var cabo := _ombro_d_mira + Vector3(0, 0, 1) * (traseira - 0.03) + Vector3(0.07, -0.08, 0) + aj_pos
+		var base := (Basis(Vector3.UP, PI) * aj_rot).scaled(Vector3.ONE * aj_esc)
+		var desejado := Transform3D(base, cabo)
+		_base_arma_mira = _pose_peito_mira.affine_inverse() * desejado * mao_local.affine_inverse()
+		# Pronto baixo: cano inclinado para baixo, girando em volta do ombro
+		var ang := deg_to_rad(dados.angulo_pronto_baixo)
+		var piv := _ombro_d_mira
+		var baixo := Transform3D.IDENTITY.translated(piv + Vector3(0, -0.05, 0)) * Transform3D(Basis(Vector3.RIGHT, ang)) * Transform3D.IDENTITY.translated(-piv) * desejado
+		_base_arma_baixa = _pose_peito_mira.affine_inverse() * baixo * mao_local.affine_inverse()
+		_arma.transform = _base_arma_baixa
+		_arma_longa = true
+		_ik_d.alvo = _arma.get_node("Mao")
+		_ik_e.alvo = _arma.get_node_or_null("MaoEsquerda")
+		if _ik_e.alvo == null:
+			_ik_e.alvo = _ik_d.alvo
+	else:
+		_anexo_mao.add_child(_arma)
+		# Posiciona pelo ponto "Mao" da arma.
+		_base_arma_mao = _calibracao_mao * Transform3D(aj_rot.scaled(Vector3.ONE * aj_esc), aj_pos) * mao_local.affine_inverse()
+		_arma.transform = _base_arma_mao
 	return _arma
+
+
+## Distância (m) do cabo até a ponta de trás da arma (coronha), pela geometria.
+func _comprimento_traseiro(arma: Node3D) -> float:
+	var inv := arma.global_transform.affine_inverse()
+	var maximo := 0.05
+	for mi in arma.find_children("*", "MeshInstance3D", true, false):
+		var caixa: AABB = (inv * mi.global_transform) * mi.get_aabb()
+		maximo = maxf(maximo, caixa.end.z)
+	var mao_z: float = (arma.get_node("Mao") as Node3D).position.z
+	return clampf(maximo - mao_z, 0.05, 0.6)
 
 
 # =========================================================================
