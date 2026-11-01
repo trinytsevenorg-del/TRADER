@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DadosSkinArma" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/skins/dados_skin_arma.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "trovao_12_4"
+nome = "Aurora"
+arma = "trovao_12"
+raridade = "lendaria"
+padrao = 5
+cor_a = Color(0.125, 0.145, 0.245, 1)
+cor_b = Color(0.3, 1.0, 0.7, 1)
+metalico = 0.6
+rugosidade = 0.3
+emissao = 1.6

@@ -6,8 +6,13 @@ var _jogador: Node
 var _acumulado := 0.0
 
 
+func definir_jogador(j: Node) -> void:
+	_jogador = j
+
+
 func _ready() -> void:
-	_jogador = get_node_or_null(jogador_path)
+	if jogador_path != NodePath():
+		_jogador = get_node_or_null(jogador_path)
 	position = Vector2(16, 12)
 	add_theme_font_size_override("font_size", 18)
 	add_theme_color_override("font_outline_color", Color.BLACK)

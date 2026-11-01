@@ -28,6 +28,7 @@ var valores := {
 	"skin": 0,               # variação visual do personagem
 	"tiro_automatico": false, # atira sozinho quando a mira passa no inimigo (etapa 3)
 	"hud": {},
+	"nome_jogador": "Você",
 	"arma_principal": "corisco_ar",
 	"arma_secundaria": "vespa_p9",               # posições/tamanhos dos botões personalizados
 }

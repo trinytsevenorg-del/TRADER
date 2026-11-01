@@ -5,6 +5,10 @@ extends Node3D
 ## O mapa urbano de verdade vem na etapa 4.
 
 func _ready() -> void:
+	# HUD da pista de testes (na partida de verdade quem faz isso é a cena Partida)
+	if has_node("HUD") and has_node("Jogador"):
+		$HUD/HudArmas.definir_jogador($Jogador)
+		$HUD/PainelDebug.definir_jogador($Jogador)
 	var chao := Construtor.material_xadrez(Color(0.34, 0.36, 0.38), Color(0.29, 0.31, 0.33), 2.0)
 	var concreto := Construtor.material_xadrez(Color(0.62, 0.58, 0.52), Color(0.56, 0.52, 0.47), 1.0)
 	var laranja := Construtor.material_xadrez(Color(0.85, 0.42, 0.12), Color(0.76, 0.37, 0.1), 1.0)

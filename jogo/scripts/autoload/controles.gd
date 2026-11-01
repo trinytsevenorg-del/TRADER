@@ -26,6 +26,7 @@ const TECLAS := {
 	"mirar": [],
 	"atirar": [],
 	"pausar": [KEY_ESCAPE, KEY_P],
+	"placar": [KEY_TAB],
 }
 const BOTOES_MOUSE := {
 	"atirar": [MOUSE_BUTTON_LEFT],

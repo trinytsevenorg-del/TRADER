@@ -10,8 +10,10 @@ var _falhas := 0
 func _ready() -> void:
 	var t0 := Time.get_ticks_msec()
 	_mapa = load("res://scenes/mapas/vila_telhado.tscn").instantiate()
+	_j = load("res://characters/jogador.tscn").instantiate()
+	_j.name = "Jogador"
+	_mapa.add_child(_j)
 	add_child(_mapa)
-	_j = _mapa.get_node("Jogador")
 	await get_tree().process_frame
 	await get_tree().process_frame
 	await get_tree().process_frame

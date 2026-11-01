@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DadosSkinArma" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/skins/dados_skin_arma.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "faisca_r3_4"
+nome = "Lava"
+arma = "faisca_r3"
+raridade = "epica"
+padrao = 2
+cor_a = Color(0.195, 0.095, 0.065, 1)
+cor_b = Color(1.0, 0.35, 0.05, 1)
+metalico = 0.2
+rugosidade = 0.6
+emissao = 1.2

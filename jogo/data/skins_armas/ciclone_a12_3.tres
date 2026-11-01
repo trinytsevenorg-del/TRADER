@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DadosSkinArma" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/skins/dados_skin_arma.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "ciclone_a12_3"
+nome = "Ouro Velho"
+arma = "ciclone_a12"
+raridade = "epica"
+padrao = 0
+cor_a = Color(0.805, 0.605, 0.205, 1)
+cor_b = Color(0.5, 0.35, 0.1, 1)
+metalico = 1.0
+rugosidade = 0.3
+emissao = 0.0

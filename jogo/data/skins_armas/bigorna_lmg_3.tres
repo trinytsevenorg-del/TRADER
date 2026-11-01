@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DadosSkinArma" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/skins/dados_skin_arma.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "bigorna_lmg_3"
+nome = "Oceano"
+arma = "bigorna_lmg"
+raridade = "rara"
+padrao = 4
+cor_a = Color(0.085, 0.335, 0.585, 1)
+cor_b = Color(0.05, 0.12, 0.25, 1)
+metalico = 0.5
+rugosidade = 0.4
+emissao = 0.0

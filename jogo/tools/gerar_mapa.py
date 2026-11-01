@@ -162,11 +162,8 @@ def xf(pos, yaw):
 tipos = sorted(set(p[0] for p in pecas))
 ext = {t: i + 10 for i, t in enumerate(tipos)}
 linhas = []
-linhas.append('[gd_scene load_steps=%d format=3]\n' % (len(tipos) + 9))
+linhas.append('[gd_scene load_steps=%d format=3]\n' % (len(tipos) + 6))
 linhas.append('[ext_resource type="Script" path="res://scripts/mapa/mapa.gd" id="1"]')
-linhas.append('[ext_resource type="PackedScene" path="res://characters/jogador.tscn" id="2"]')
-linhas.append('[ext_resource type="PackedScene" path="res://ui/hud/hud.tscn" id="3"]')
-linhas.append('[ext_resource type="PackedScene" path="res://scenes/test/boneco_treino.tscn" id="4"]')
 for t in tipos:
     linhas.append('[ext_resource type="PackedScene" path="res://scenes/mapa/pecas/%s.tscn" id="%d"]' % (t, ext[t]))
 linhas.append('''
@@ -224,12 +221,7 @@ for i, p in enumerate(spawns):
     dx, dz = -p[0], -p[2]
     yaw = math.degrees(math.atan2(-dx, -dz))
     linhas.append('[node name="Renasce%d" type="Marker3D" parent="Renascimentos" groups=["renascimento"]]\ntransform = %s\n' % (i + 1, xf(p, yaw)))
-linhas.append('[node name="Alvos" type="Node3D" parent="."]\n')
-for i, (pos, movel, pers, skin) in enumerate(alvos):
-    linhas.append('[node name="Boneco%d" parent="Alvos" instance=ExtResource("4")]\ntransform = %s\nmovel = %s\npersonagem = %d\nskin = %d\n'
-                  % (i + 1, xf(pos, 180 if pos[2] < 0 else 0), fmt(movel), pers, skin))
-linhas.append('[node name="Jogador" parent="." instance=ExtResource("2")]\ntransform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 10)\n')
-linhas.append('[node name="HUD" parent="." instance=ExtResource("3")]\n')
+# Jogador, bots e HUD são criados pela cena da partida (scenes/partida.tscn).
 
 saida = os.path.join(RAIZ, "scenes", "mapas", "vila_telhado.tscn")
 open(saida, "w").write("\n".join(linhas))

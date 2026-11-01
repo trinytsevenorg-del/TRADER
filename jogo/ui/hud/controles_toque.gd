@@ -32,6 +32,7 @@ const PADRAO := {
 	"recarregar":  {"acao": "recarregar", "rotulo": "REC", "pos": Vector2(0.94, 0.93), "raio": 36.0},
 	"trocar_arma": {"acao": "trocar_arma", "rotulo": "TROCA", "pos": Vector2(0.45, 0.92), "raio": 36.0},
 	"pausar":      {"acao": "pausar", "rotulo": "II", "pos": Vector2(0.96, 0.08), "raio": 30.0},
+	"placar":      {"acao": "placar", "rotulo": "PLACAR", "pos": Vector2(0.89, 0.08), "raio": 28.0},
 }
 
 var botoes := {}          # id -> {acao, rotulo, pos (fração), raio, centro (px)}

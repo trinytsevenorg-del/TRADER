@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DadosSkinArma" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/skins/dados_skin_arma.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "bigorna_lmg_4"
+nome = "Lava"
+arma = "bigorna_lmg"
+raridade = "epica"
+padrao = 2
+cor_a = Color(0.135, 0.035, 0.005, 1)
+cor_b = Color(1.0, 0.35, 0.05, 1)
+metalico = 0.2
+rugosidade = 0.6
+emissao = 1.2

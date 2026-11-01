@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DadosSkinArma" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/skins/dados_skin_arma.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "patrulha_dmr_1"
+nome = "Areia"
+arma = "patrulha_dmr"
+raridade = "comum"
+padrao = 0
+cor_a = Color(0.775, 0.675, 0.495, 1)
+cor_b = Color(0.6, 0.5, 0.35, 1)
+metalico = 0.1
+rugosidade = 0.8
+emissao = 0.0

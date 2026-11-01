@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DadosSkinArma" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/skins/dados_skin_arma.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "trovao_12_3"
+nome = "Tigre"
+arma = "trovao_12"
+raridade = "rara"
+padrao = 1
+cor_a = Color(0.995, 0.595, 0.145, 1)
+cor_b = Color(0.08, 0.06, 0.05, 1)
+metalico = 0.2
+rugosidade = 0.6
+emissao = 0.0

@@ -1,9 +1,6 @@
-[gd_scene load_steps=20 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://scripts/mapa/mapa.gd" id="1"]
-[ext_resource type="PackedScene" path="res://characters/jogador.tscn" id="2"]
-[ext_resource type="PackedScene" path="res://ui/hud/hud.tscn" id="3"]
-[ext_resource type="PackedScene" path="res://scenes/test/boneco_treino.tscn" id="4"]
 [ext_resource type="PackedScene" path="res://scenes/mapa/pecas/banca.tscn" id="10"]
 [ext_resource type="PackedScene" path="res://scenes/mapa/pecas/bloco.tscn" id="11"]
 [ext_resource type="PackedScene" path="res://scenes/mapa/pecas/caixa_madeira.tscn" id="12"]
@@ -583,34 +580,3 @@ transform = Transform3D(-0.816024, 0, -0.578017, 0, 1, 0, 0.578017, 0, -0.816024
 
 [node name="Renasce10" type="Marker3D" parent="Renascimentos" groups=["renascimento"]]
 transform = Transform3D(0.816024, 0, 0.578017, 0, 1, 0, -0.578017, 0, 0.816024, 17, 6.12, 24)
-
-[node name="Alvos" type="Node3D" parent="."]
-
-[node name="Boneco1" parent="Alvos" instance=ExtResource("4")]
-transform = Transform3D(-1.0, 0, 0.0, 0, 1, 0, -0.0, 0, -1.0, 0, 0.04, -6)
-movel = false
-personagem = 0
-skin = 4
-
-[node name="Boneco2" parent="Alvos" instance=ExtResource("4")]
-transform = Transform3D(1.0, 0, 0.0, 0, 1, 0, -0.0, 0, 1.0, -5, 0.04, 4.5)
-movel = true
-personagem = 1
-skin = 3
-
-[node name="Boneco3" parent="Alvos" instance=ExtResource("4")]
-transform = Transform3D(-1.0, 0, 0.0, 0, 1, 0, -0.0, 0, -1.0, 20, 5.2, -8)
-movel = false
-personagem = 0
-skin = 6
-
-[node name="Boneco4" parent="Alvos" instance=ExtResource("4")]
-transform = Transform3D(1.0, 0, 0.0, 0, 1, 0, -0.0, 0, 1.0, 0, 7.12, 23)
-movel = false
-personagem = 1
-skin = 2
-
-[node name="Jogador" parent="." instance=ExtResource("2")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 10)
-
-[node name="HUD" parent="." instance=ExtResource("3")]

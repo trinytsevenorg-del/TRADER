@@ -22,8 +22,13 @@ class_name Jogador
 ## Fluidez: nenhuma ação "mata" a velocidade; cada transição herda o embalo.
 
 signal estado_mudou(novo: StringName)
+signal morreu(atacante: Node)
+signal renasceu
 
-enum Modo { NORMAL, PAREDE, SUBINDO, ESCALANDO, ROLANDO, DESLIZANDO }
+enum Modo { NORMAL, PAREDE, SUBINDO, ESCALANDO, ROLANDO, DESLIZANDO, MORTO }
+## LOCAL = você (botões e câmera). BOT = IA (ai/cerebro_bot.gd dá os comandos).
+## REMOTO = personagem de outro aparelho: só mostra o que chega pela rede (etapa 8).
+enum Tipo { LOCAL, BOT, REMOTO }
 
 @export_group("Movimento no chão")
 @export var velocidade_corrida := 7.5
@@ -102,8 +107,22 @@ const MODELOS := [
 	"res://characters/humano/humano_feminino.tscn",
 ]
 
-## Falso para jogadores remotos e bots (etapas 5 e 8).
+## Defina ANTES de adicionar à cena (o spawner da partida faz isso).
+var tipo: Tipo = Tipo.LOCAL
+## Atalho: true só para o jogador deste aparelho.
 var controlado_localmente := true
+## Nome no placar / feed de abates.
+var nome_exibicao := "Você"
+## Para bots e remotos: qual personagem/skin usar (o local usa Config).
+var personagem_inicial := 0
+var skin_inicial := 0
+## Comandos (BOT): direção no mundo (comprimento 0..1) e mira.
+var comando_direcao := Vector3.ZERO
+var yaw_mira := 0.0
+var pitch_mira := 0.0
+## Proteção ao renascer (invencível por alguns segundos).
+@export var tempo_protecao_renascer := 1.5
+var _protecao := 0.0
 var mirando := false
 ## Verdadeiro durante a janela de invencibilidade do rolamento (o dano checa isto).
 var invencivel := false
@@ -145,6 +164,13 @@ func _ready() -> void:
 	floor_stop_on_slope = true
 	# Forma própria (não compartilhada) para poder agachar no rolamento/deslize.
 	_colisao.shape = _colisao.shape.duplicate()
+	controlado_localmente = tipo == Tipo.LOCAL
+	saude.morreu.connect(_ao_morrer)
+	if not controlado_localmente:
+		# Sem câmera própria (economiza os raios das SpringArms).
+		camera_rig.process_mode = Node.PROCESS_MODE_DISABLED
+		camera_rig.camera.current = false
+		yaw_mira = rotation.y
 	if controlado_localmente:
 		trocar_modelo(Config.obter("personagem"), Config.obter("skin"))
 		Config.alterado.connect(func(chave, _v):
@@ -154,7 +180,7 @@ func _ready() -> void:
 				_equipar_armas_config())
 		_equipar_armas_config.call_deferred()
 	else:
-		_achar_modelo()
+		trocar_modelo(personagem_inicial, skin_inicial)
 
 
 func _equipar_armas_config() -> void:
@@ -168,6 +194,54 @@ func receber_dano(quantidade: float, atacante: Node, ponto: Vector3, cabeca: boo
 
 func esta_morto() -> bool:
 	return saude.morto
+
+
+## Yaw/pitch para onde o personagem olha (câmera no local, comando nos outros).
+func yaw_visao() -> float:
+	return camera_rig.yaw if controlado_localmente else yaw_mira
+
+
+func pitch_visao() -> float:
+	return camera_rig.pitch if controlado_localmente else pitch_mira
+
+
+## Ponto e direção dos olhos (usado pelas armas dos bots e pela IA).
+func transform_olhos() -> Transform3D:
+	var base := Basis(Vector3.UP, yaw_visao()) * Basis(Vector3.RIGHT, pitch_visao())
+	return Transform3D(base, global_position + Vector3.UP * (1.55 if modo != Modo.DESLIZANDO and modo != Modo.ROLANDO else 0.9))
+
+
+# Comandos (usados pela IA dos bots; o jogador local usa os botões).
+func pedir_pulo() -> void:
+	_buffer_pulo = tempo_buffer_pulo
+
+
+func pedir_rolar() -> void:
+	_buffer_rolar = 0.3
+
+
+func pedir_deslizar() -> void:
+	_buffer_deslizar = 0.3
+
+
+func _ao_morrer(atacante: Node) -> void:
+	_mudar_modo(Modo.MORTO)
+	velocity = Vector3.ZERO
+	collision_layer = 0  # tiros e outros personagens atravessam o corpo
+	armas.gatilho = false
+	morreu.emit(atacante)
+
+
+## Renasce num ponto: vida cheia, munição cheia e proteção curta.
+func renascer(pos: Vector3, yaw: float) -> void:
+	saude.reviver()
+	armas.reabastecer()
+	collision_layer = 2
+	teleportar(pos, yaw)
+	yaw_mira = yaw
+	pitch_mira = 0.0
+	_protecao = tempo_protecao_renascer
+	renasceu.emit()
 
 
 ## Troca o modelo 3D (personagem e skin) sem mexer em mais nada.
@@ -199,16 +273,28 @@ func _achar_modelo() -> void:
 # =========================================================================
 
 func _physics_process(delta: float) -> void:
-	var entrada := Controles.obter_movimento() if controlado_localmente else Vector2.ZERO
-	var direcao := Vector3(entrada.x, 0.0, entrada.y).rotated(Vector3.UP, camera_rig.yaw)
+	if tipo == Tipo.REMOTO:
+		# Posição/estado vêm da rede (network/sincronizador_personagem.gd).
+		_atualizar_animacao_remota()
+		return
+	_protecao -= delta
+	var direcao: Vector3
+	if controlado_localmente:
+		var entrada := Controles.obter_movimento()
+		direcao = Vector3(entrada.x, 0.0, entrada.y).rotated(Vector3.UP, camera_rig.yaw)
+	else:
+		direcao = Vector3(comando_direcao.x, 0.0, comando_direcao.z).limit_length(1.0)
+	if modo == Modo.MORTO:
+		direcao = Vector3.ZERO
 
 	# Corpo vira para a mira ao mirar ou atirar; câmera só aproxima com MIRA
 	# ou com armas que têm zoom (fuzis com mira óptica, snipers).
 	mirando = armas.mira_botao or armas.gatilho or armas.zoom_ativo or armas.tempo_desde_tiro < 0.6
-	camera_rig.mirando = armas.mira_botao or armas.zoom_ativo
-	camera_rig.zoom_arma = armas.zoom_atual() if armas.zoom_ativo else 1.0
-	# Na luneta (zoom forte) o próprio personagem some para não tampar a visão.
-	visual.visible = not (armas.zoom_ativo and armas.zoom_atual() >= 2.5 and camera_rig.progresso_mira() > 0.6)
+	if controlado_localmente:
+		camera_rig.mirando = armas.mira_botao or armas.zoom_ativo
+		camera_rig.zoom_arma = armas.zoom_atual() if armas.zoom_ativo else 1.0
+		# Na luneta (zoom forte) o próprio personagem some para não tampar a visão.
+		visual.visible = not (armas.zoom_ativo and armas.zoom_atual() >= 2.5 and camera_rig.progresso_mira() > 0.6)
 
 	_tempo_modo += delta
 	_recarga_rolar -= delta
@@ -243,8 +329,14 @@ func _physics_process(delta: float) -> void:
 			_modo_rolando(direcao, delta)
 		Modo.DESLIZANDO:
 			_modo_deslizando(direcao, delta)
+		Modo.MORTO:
+			if not is_on_floor():
+				velocity.y -= gravidade * delta
+			velocity.x = 0.0
+			velocity.z = 0.0
+			move_and_slide()
 
-	invencivel = modo == Modo.ROLANDO and _tempo_modo < invencibilidade_rolamento
+	invencivel = (modo == Modo.ROLANDO and _tempo_modo < invencibilidade_rolamento) or _protecao > 0.0
 	_girar_modelo(direcao, delta)
 	_atualizar_estado()
 
@@ -643,12 +735,12 @@ func _girar_modelo(direcao: Vector3, delta: float) -> void:
 			alvo_yaw = atan2(-_dir_acao.x, -_dir_acao.z)
 		Modo.DESLIZANDO:
 			# Como numa prancha: corpo meio de lado, inclinando para dentro da curva.
-			alvo_yaw = camera_rig.yaw if mirando else atan2(-_dir_acao.x, -_dir_acao.z)
+			alvo_yaw = yaw_visao() if mirando else atan2(-_dir_acao.x, -_dir_acao.z)
 			alvo_incl.x = 0.15
 			alvo_incl.y = -_vel_lateral / velocidade_lateral_deslize * 0.4
 		_:
 			if mirando:
-				alvo_yaw = camera_rig.yaw  # mirando: corpo vira para onde a câmera olha
+				alvo_yaw = yaw_visao()  # mirando: corpo vira para onde a câmera olha
 			elif direcao.length_squared() > 0.01:
 				alvo_yaw = atan2(-direcao.x, -direcao.z)  # frente do modelo = -Z
 	visual.rotation.y = lerp_angle(visual.rotation.y, alvo_yaw, k)
@@ -666,6 +758,7 @@ func _atualizar_estado() -> void:
 		Modo.ESCALANDO: novo = &"escalando"
 		Modo.ROLANDO: novo = &"rolando"
 		Modo.DESLIZANDO: novo = &"deslizando"
+		Modo.MORTO: novo = &"morto"
 		_:
 			if not is_on_floor():
 				novo = &"pulando" if velocity.y > 0.0 else &"caindo"
@@ -681,7 +774,7 @@ func _atualizar_estado() -> void:
 	if modelo and modelo.has_method("definir_mira"):
 		# Tronco mira junto com a câmera (menos no rolamento e na escalada).
 		var pode := modo != Modo.ROLANDO and modo != Modo.ESCALANDO
-		var pitch_norm := camera_rig.pitch / deg_to_rad(60.0)
+		var pitch_norm := pitch_visao() / deg_to_rad(60.0)
 		modelo.definir_mira(1.0 if (mirando and pode) else 0.0, pitch_norm)
 
 
@@ -689,7 +782,27 @@ func _atualizar_estado() -> void:
 func teleportar(pos: Vector3, yaw: float = 0.0) -> void:
 	global_position = pos
 	velocity = Vector3.ZERO
-	_mudar_modo(Modo.NORMAL)
+	if modo != Modo.MORTO:
+		_mudar_modo(Modo.NORMAL)
+	else:
+		modo = Modo.NORMAL
+		_tempo_modo = 0.0
 	visual.rotation.y = yaw
+	yaw_mira = yaw
 	camera_rig.yaw = yaw
-	camera_rig.encaixar()
+	if controlado_localmente:
+		camera_rig.encaixar()
+
+
+# ---- Personagem remoto (etapa 8): estado vem da rede ----
+var estado_remoto: StringName = &"parado"
+var vel_remota := 0.0
+var mirando_remoto := false
+
+
+func _atualizar_animacao_remota() -> void:
+	estado = estado_remoto
+	if modelo and modelo.has_method("atualizar_animacao"):
+		modelo.atualizar_animacao(estado, vel_remota / velocidade_corrida, mirando_remoto)
+	if modelo and modelo.has_method("definir_mira"):
+		modelo.definir_mira(1.0 if mirando_remoto else 0.0, pitch_mira / deg_to_rad(60.0))

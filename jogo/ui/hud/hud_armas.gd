@@ -17,13 +17,19 @@ func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_fonte = ThemeDB.fallback_font
-	_jogador = get_node_or_null(jogador_path) as Jogador
-	if _jogador:
-		_portador = _jogador.get_node("Armas")
-		_portador.acertou.connect(func(_alvo, _dano, cabeca, abate):
-			_marcador = 0.18 if not abate else 0.4
-			_marcador_abate = abate
-			_marcador_cabeca = cabeca)
+	if jogador_path != NodePath():
+		var j := get_node_or_null(jogador_path) as Jogador
+		if j:
+			definir_jogador(j)
+
+
+func definir_jogador(j: Jogador) -> void:
+	_jogador = j
+	_portador = _jogador.get_node("Armas")
+	_portador.acertou.connect(func(_alvo, _dano, cabeca, abate):
+		_marcador = 0.18 if not abate else 0.4
+		_marcador_abate = abate
+		_marcador_cabeca = cabeca)
 
 
 func _process(delta: float) -> void:
@@ -32,7 +38,7 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
-	if _portador == null or _portador.slots.is_empty():
+	if _portador == null or _portador.slots.is_empty() or not is_instance_valid(_jogador):
 		return
 	var d := _portador.arma()
 	var s := _portador.slot()

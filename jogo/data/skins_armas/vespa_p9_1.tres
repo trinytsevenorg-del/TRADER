@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DadosSkinArma" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/skins/dados_skin_arma.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "vespa_p9_1"
+nome = "Areia"
+arma = "vespa_p9"
+raridade = "comum"
+padrao = 0
+cor_a = Color(0.715, 0.615, 0.435, 1)
+cor_b = Color(0.6, 0.5, 0.35, 1)
+metalico = 0.1
+rugosidade = 0.8
+emissao = 0.0

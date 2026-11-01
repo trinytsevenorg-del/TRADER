@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DadosSkinArma" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/skins/dados_skin_arma.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "ciclone_a12_1"
+nome = "Concreto"
+arma = "ciclone_a12"
+raridade = "comum"
+padrao = 3
+cor_a = Color(0.555, 0.555, 0.535, 1)
+cor_b = Color(0.45, 0.45, 0.44, 1)
+metalico = 0.1
+rugosidade = 0.9
+emissao = 0.0

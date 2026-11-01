@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DadosSkinArma" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/skins/dados_skin_arma.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "coruja_sx_2"
+nome = "Selva"
+arma = "coruja_sx"
+raridade = "rara"
+padrao = 2
+cor_a = Color(0.295, 0.495, 0.245, 1)
+cor_b = Color(0.6, 0.55, 0.25, 1)
+metalico = 0.1
+rugosidade = 0.7
+emissao = 0.0

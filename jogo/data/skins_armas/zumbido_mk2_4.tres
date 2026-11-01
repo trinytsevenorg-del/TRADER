@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DadosSkinArma" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/skins/dados_skin_arma.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "zumbido_mk2_4"
+nome = "Neon"
+arma = "zumbido_mk2"
+raridade = "epica"
+padrao = 5
+cor_a = Color(0.075, 0.075, 0.115, 1)
+cor_b = Color(1.0, 0.2, 0.8, 1)
+metalico = 0.4
+rugosidade = 0.3
+emissao = 1.4

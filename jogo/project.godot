@@ -7,7 +7,7 @@ config_version=5
 
 config/name="Projeto Telhado"
 config/description="TPS com parkour para celular (projeto pessoal)."
-run/main_scene="res://scenes/mapas/vila_telhado.tscn"
+run/main_scene="res://scenes/partida.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
 
 [autoload]
@@ -15,6 +15,9 @@ config/features=PackedStringArray("4.3", "GL Compatibility")
 Config="*res://scripts/autoload/config.gd"
 Controles="*res://scripts/autoload/controles.gd"
 Efeitos="*res://scripts/autoload/efeitos.gd"
+Sessao="*res://scripts/autoload/sessao.gd"
+Progresso="*res://scripts/autoload/progresso.gd"
+Rede="*res://network/rede.gd"
 
 [display]
 

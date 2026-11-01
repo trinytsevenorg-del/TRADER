@@ -109,9 +109,7 @@ func _equipar_atual() -> void:
 		return
 	equipando = d.tempo_equipar
 	# Troca o modelo na mão do personagem.
-	var modelo_personagem = dono.get("modelo")
-	if modelo_personagem and modelo_personagem.has_method("prender_arma"):
-		modelo_arma = modelo_personagem.prender_arma(d.cena_modelo)
+	reprender_modelo()
 	arma_trocada.emit(d)
 
 
@@ -121,6 +119,30 @@ func reprender_modelo() -> void:
 	var modelo_personagem = dono.get("modelo")
 	if d and modelo_personagem and modelo_personagem.has_method("prender_arma"):
 		modelo_arma = modelo_personagem.prender_arma(d.cena_modelo)
+		_aplicar_skin(d)
+
+
+## Skin da arma (só visual). Jogador local: a equipada no inventário.
+## Bots: uma skin aleatória daquela arma (fica estiloso na partida).
+var skin_bot: DadosSkinArma
+func _aplicar_skin(d: DadosArma) -> void:
+	if modelo_arma == null:
+		return
+	var s: DadosSkinArma = null
+	if dono.controlado_localmente:
+		s = Progresso.skin_equipada(d.id)
+	elif dono.tipo == Jogador.Tipo.BOT:
+		var opcoes := CatalogoSkins.da_arma(d.id)
+		if not opcoes.is_empty() and randf() < 0.6:
+			s = opcoes[randi() % opcoes.size()]
+	else:
+		s = CatalogoSkins.carregar(skin_remota.get(d.id, ""))
+	if s:
+		modelo_arma.aplicar_material(CatalogoSkins.material(s))
+
+
+## Skins dos jogadores remotos (preenchido pela rede na etapa 8).
+var skin_remota := {}
 
 
 # =========================================================================
@@ -135,8 +157,12 @@ func _physics_process(delta: float) -> void:
 	_buffer_semi -= delta
 	_bloom = max(_bloom - d.recuperacao_dispersao * delta, 0.0)
 
-	if dono.get("controlado_localmente"):
+	if dono.controlado_localmente:
 		_ler_entrada_local()
+	if dono.esta_morto():
+		gatilho = false
+		_gatilho_anterior = false
+		return
 
 	# Troca de arma
 	if pedir_troca and slots.size() > 1:
@@ -257,17 +283,26 @@ func _disparar(d: DadosArma, s: Slot) -> void:
 	tempo_desde_tiro = 0.0
 	var disp := _calcular_dispersao(d)
 
-	var cam := camera.camera
-	var frente := -cam.global_basis.z
-	# Origem do raio: o ponto da linha da câmera mais próximo do personagem
-	# (assim nada entre a câmera e o personagem bloqueia o tiro).
+	# Base da mira: câmera (jogador local) ou "olhos" do personagem (bots).
+	var base_mira: Basis
+	var origem: Vector3
 	var peito := dono.global_position + Vector3.UP * 1.3
-	var origem: Vector3 = cam.global_position + frente * maxf((peito - cam.global_position).dot(frente), 0.0)
+	if dono.controlado_localmente:
+		var cam := camera.camera
+		base_mira = cam.global_basis
+		var frente := -base_mira.z
+		# Origem do raio: o ponto da linha da câmera mais próximo do personagem
+		# (assim nada entre a câmera e o personagem bloqueia o tiro).
+		origem = cam.global_position + frente * maxf((peito - cam.global_position).dot(frente), 0.0)
+	else:
+		var olhos: Transform3D = dono.transform_olhos()
+		base_mira = olhos.basis
+		origem = olhos.origin
 	var cano := modelo_arma.cano.global_position if modelo_arma else peito
 	var espaco := dono.get_world_3d().direct_space_state
 
 	for p in d.projeteis:
-		var dir := _direcao_com_dispersao(cam.global_basis, disp)
+		var dir := _direcao_com_dispersao(base_mira, disp)
 		var q := PhysicsRayQueryParameters3D.create(origem, origem + dir * d.alcance_maximo, MASCARA_TIRO)
 		q.exclude = [dono.get_rid()]
 		q.collide_with_areas = false
@@ -290,8 +325,13 @@ func _disparar(d: DadosArma, s: Slot) -> void:
 
 	_bloom = min(_bloom + d.dispersao_por_tiro, d.dispersao_extra_max)
 	var fator_recuo := 0.6 if (zoom_ativo or mira_botao) else 1.0
-	camera.adicionar_recuo(d.recuo_vertical * randf_range(0.85, 1.15) * fator_recuo,
-		randf_range(-1.0, 1.0) * d.recuo_horizontal * fator_recuo)
+	if dono.controlado_localmente:
+		camera.adicionar_recuo(d.recuo_vertical * randf_range(0.85, 1.15) * fator_recuo,
+			randf_range(-1.0, 1.0) * d.recuo_horizontal * fator_recuo)
+	else:
+		# Bots: o recuo sobe a mira deles (a IA compensa aos poucos).
+		dono.pitch_mira += deg_to_rad(d.recuo_vertical * 0.5)
+		dono.yaw_mira += deg_to_rad(randf_range(-1.0, 1.0) * d.recuo_horizontal * 0.5)
 	if modelo_arma:
 		modelo_arma.disparou(0.05 + d.recuo_vertical * 0.015)
 	disparou.emit(d)
@@ -318,7 +358,7 @@ func _aim_assist() -> void:
 	var melhor: Node3D = null
 	var melhor_ang := deg_to_rad(lerpf(1.5, 9.0, forca))  # cone de ajuda
 	for alvo in get_tree().get_nodes_in_group("alvos"):
-		if alvo == dono or (alvo.has_method("esta_morto") and alvo.esta_morto()):
+		if alvo == dono or (alvo.has_method("esta_morto") and alvo.esta_morto()) or not alvo.is_visible_in_tree():
 			continue
 		var ponto: Vector3 = alvo.global_position + Vector3.UP * 1.2
 		var para := ponto - cam.global_position
