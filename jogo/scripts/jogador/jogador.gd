@@ -45,6 +45,13 @@ var _tempo_fora_do_chao := 0.0
 var _buffer_pulo := 0.0
 var _pulando := false
 
+## Cenas de personagem escolhíveis (índice = Config "personagem").
+## Para adicionar um personagem novo, crie a cena e coloque o caminho aqui.
+const MODELOS := [
+	"res://characters/humano/humano_masculino.tscn",
+	"res://characters/humano/humano_feminino.tscn",
+]
+
 @onready var visual: Node3D = $Visual
 @onready var camera_rig: CameraTPS = $CameraRig
 ## Modelo 3D (provisório ou .glb). Precisa ter o método atualizar_animacao().
@@ -56,10 +63,35 @@ func _ready() -> void:
 	floor_max_angle = deg_to_rad(46.0)
 	floor_constant_speed = true
 	floor_stop_on_slope = true
+	if controlado_localmente:
+		trocar_modelo(Config.obter("personagem"), Config.obter("skin"))
+		Config.alterado.connect(func(chave, _v):
+			if chave == "personagem" or chave == "skin":
+				trocar_modelo(Config.obter("personagem"), Config.obter("skin")))
+	else:
+		_achar_modelo()
+
+
+## Troca o modelo 3D (personagem e skin) sem mexer em mais nada.
+func trocar_modelo(indice: int, skin: int = 0) -> void:
+	var caminho: String = MODELOS[clamp(indice, 0, MODELOS.size() - 1)]
+	if not ResourceLoader.exists(caminho):
+		_achar_modelo()  # sem o modelo: mantém o provisório
+		return
+	for filho in visual.get_children():
+		filho.queue_free()
+	var novo: Node3D = load(caminho).instantiate()
+	if "skin" in novo:
+		novo.skin = skin
+	visual.add_child(novo)
+	modelo = novo
+
+
+func _achar_modelo() -> void:
 	for filho in visual.get_children():
 		if filho.has_method("atualizar_animacao"):
 			modelo = filho
-			break
+			return
 
 
 func _physics_process(delta: float) -> void:
@@ -136,7 +168,7 @@ func _atualizar_estado(vel_horizontal: float) -> void:
 	if novo != estado:
 		estado = novo
 		estado_mudou.emit(estado)
-	if modelo:
+	if modelo and modelo.has_method("atualizar_animacao"):
 		modelo.atualizar_animacao(estado, vel_horizontal / velocidade_corrida, mirando)
 
 

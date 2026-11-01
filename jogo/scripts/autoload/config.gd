@@ -6,6 +6,13 @@ extends Node
 signal alterado(chave: String, valor)
 
 const CAMINHO := "user://config.cfg"
+## Nomes das skins de personagem (mesma ordem de texturas_skin nas cenas humanas).
+const NOMES_SKINS := [
+	"Tático (pele escura)", "Tático (pele clara)",
+	"Urbano (pele escura)", "Urbano (pele clara)",
+	"Noturno (pele escura)", "Noturno (pele clara)",
+	"Deserto (pele escura)", "Deserto (pele clara)",
+]
 
 ## Valores padrão. Para criar uma opção nova, basta adicionar aqui.
 var valores := {
@@ -17,6 +24,8 @@ var valores := {
 	"qualidade": 1,          # 0 = baixa, 1 = média, 2 = alta
 	"mostrar_fps": true,
 	"forcar_toque": false,   # mostra os controles de toque também no PC
+	"personagem": 0,         # 0 = masculino, 1 = feminino
+	"skin": 0,               # variação visual do personagem
 }
 
 

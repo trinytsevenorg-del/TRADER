@@ -1,0 +1,20 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://characters/humano/modelo_humano.gd" id="1"]
+[ext_resource type="PackedScene" path="res://assets/characters/humano_feminino/humano_feminino.gltf" id="2"]
+[ext_resource type="Texture2D" path="res://assets/characters/humano_feminino/skin_tatico_escura.png" id="10"]
+[ext_resource type="Texture2D" path="res://assets/characters/humano_feminino/skin_tatico_clara.png" id="11"]
+[ext_resource type="Texture2D" path="res://assets/characters/humano_feminino/skin_urbano_escura.png" id="12"]
+[ext_resource type="Texture2D" path="res://assets/characters/humano_feminino/skin_urbano_clara.png" id="13"]
+[ext_resource type="Texture2D" path="res://assets/characters/humano_feminino/skin_noturno_escura.png" id="14"]
+[ext_resource type="Texture2D" path="res://assets/characters/humano_feminino/skin_noturno_clara.png" id="15"]
+[ext_resource type="Texture2D" path="res://assets/characters/humano_feminino/skin_deserto_escura.png" id="16"]
+[ext_resource type="Texture2D" path="res://assets/characters/humano_feminino/skin_deserto_clara.png" id="17"]
+[ext_resource type="PackedScene" path="res://assets/characters/humano_feminino/cabelo_longo.gltf" id="18"]
+
+[node name="Humano_feminino" type="Node3D"]
+script = ExtResource("1")
+cena_modelo = ExtResource("2")
+texturas_skin = Array[Texture2D]([ExtResource("10"), ExtResource("11"), ExtResource("12"), ExtResource("13"), ExtResource("14"), ExtResource("15"), ExtResource("16"), ExtResource("17")])
+acessorios_cabeca = Array[PackedScene]([ExtResource("18")])
+cor_cabelo = Color(0.32, 0.17, 0.08, 1)

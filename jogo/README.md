@@ -25,6 +25,37 @@ jogo/
 └── tests/               testes automáticos (rodam sem tela)
 ```
 
+## Personagens humanos (modelos 3D)
+
+Os personagens agora são humanos de verdade (não mais bonecos de caixas):
+
+- **Modelos:** *Universal Base Characters* (homem e mulher, ~13 mil triângulos cada),
+  de Quaternius, licença **CC0** (uso livre). Pasta `assets/characters/`.
+- **Animações:** *Universal Animation Library* (43 animações: parado, andar, correr, sprint,
+  pulo, rolamento, morte, mira/tiro/recarga de pistola…), Quaternius, **CC0**.
+  Arquivo `assets/animations/animacoes_humanas.glb`. Mesmo esqueleto dos personagens.
+- **Cabelo/barba:** do mesmo pacote, presos ao osso da cabeça.
+- **Roupas:** o pacote grátis só traz o corpo base, então `tools/gerar_roupas.py` pinta
+  camiseta, calça, botas, luvas e cinto direto na textura (mantendo o relevo do corpo).
+  São 4 roupas × 2 tons de pele = **8 skins** por personagem. Para mudar as cores, edite
+  `SKINS` no script e rode `python3 tools/gerar_roupas.py`.
+- **Escolher personagem/skin:** por enquanto em Configurações (II / Esc). A tela de seleção
+  própria vem na etapa 7.
+- Texturas reduzidas para 1024 px (corpo) e 512 px (cabelo) para pesar pouco no celular.
+
+Cena de cada personagem: `characters/humano/humano_masculino.tscn` e `humano_feminino.tscn`.
+Para trocar o modelo por outro .glb **com o mesmo esqueleto**, basta mudar `cena_modelo`
+no Inspetor, sem mexer no código.
+
+## APK (Android)
+
+`export_presets.cfg` já está configurado (ARM 32/64 bits, tela cheia, permissões de rede).
+Para gerar o APK no seu PC: *Projeto > Exportar > Android > Exportar Projeto*. Antes, instale
+os modelos de exportação e configure o SDK Android (veja "Como testar no celular" abaixo).
+
+Para instalar um APK no celular: copie o arquivo para o celular, abra pelo gerenciador de
+arquivos e permita "instalar apps desconhecidos" para esse app quando o Android pedir.
+
 ## Roteiro
 
 | Etapa | Conteúdo | Status |

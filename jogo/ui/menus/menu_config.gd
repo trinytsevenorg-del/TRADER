@@ -54,6 +54,8 @@ func _montar() -> void:
 	titulo.add_theme_font_size_override("font_size", 30)
 	_caixa.add_child(titulo)
 
+	_opcoes("Personagem", "personagem", ["Masculino", "Feminino"])
+	_opcoes("Skin", "skin", Config.NOMES_SKINS)
 	_slider("Sensibilidade (toque)", "sens_toque", 0.2, 3.0, 0.05)
 	_slider("Sensibilidade (mouse)", "sens_mouse", 0.2, 3.0, 0.05)
 	_slider("Sensibilidade mirando / luneta", "sens_mira", 0.2, 1.5, 0.05)
