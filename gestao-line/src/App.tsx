@@ -12,6 +12,7 @@ import Evento from './pages/Evento';
 import Mes from './pages/Mes';
 import Ficha from './pages/Ficha';
 import Config from './pages/Config';
+import Admin from './pages/Admin';
 
 function Nav() {
   const { org, podeConfigurar } = useApp();
@@ -35,7 +36,7 @@ function Nav() {
 }
 
 function Rotas() {
-  const { session, carregando, org, euJogador } = useApp();
+  const { session, carregando, org, euJogador, souAdmin } = useApp();
   const loc = useLocation();
   if (!configurado) return <div className="centro"><div className="caixa erro">Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY (veja o README).</div></div>;
   if (loc.pathname.startsWith('/convite/')) return <Routes><Route path="/convite/:token" element={<Convite />} /></Routes>;
@@ -43,6 +44,7 @@ function Rotas() {
   if (!session) return <Login />;
   const pendente = conviteGuardado();
   if (pendente) return <Navigate to={'/convite/' + pendente} replace />;
+  if (souAdmin && loc.pathname === '/admin') return <div className="app"><Admin /></div>;
   if (!org) return <CriarOrg />;
   // fase 2: o jogador só vê a própria ficha
   if (org.papel === 'jogador') {

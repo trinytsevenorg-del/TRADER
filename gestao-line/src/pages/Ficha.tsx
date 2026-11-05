@@ -6,6 +6,7 @@ import { chamarFuncao, msgErro, supabase } from '../lib/supabase';
 import { calcularJogador, mesAtual, nomeMesCurto, NOMES_FUNCAO, quedasDoJogador, somarMes, type Dados } from '../lib/nota';
 import { GraficoCriterios, GraficoLinha } from '../components/graficos';
 import { Carregando, FaixaBadge, Icone, MesSeletor, Topo } from '../components/ui';
+import { CriarLogin } from '../components/CriarLogin';
 import { dataBR } from './Agenda';
 
 const MESES_HIST = 6;
@@ -21,6 +22,7 @@ export default function Ficha({ idFixo }: { idFixo?: string }) {
   const [erro, setErro] = useState('');
   const [perfil, setPerfil] = useState<{ fotos: Foto[]; indisponivel?: boolean; sem_id?: boolean } | null>(null);
   const [convite, setConvite] = useState('');
+  const [criarLogin, setCriarLogin] = useState(false);
   const jogador = jogadores.find((j) => j.id === id);
 
   useEffect(() => {
@@ -177,7 +179,12 @@ export default function Ficha({ idFixo }: { idFixo?: string }) {
         <div className="card">
           <h2>Acesso do jogador (fase 2)</h2>
           <p className="small muted">Gera um link para o jogador entrar e ver só a própria nota, gráfico e histórico.</p>
-          {!convite ? <button onClick={gerarConvite}><Icone nome="link" />Gerar convite</button> : <><input readOnly value={convite} onFocus={(e) => e.target.select()} /><div className="small muted" style={{ marginTop: 4 }}>Link copiado. Vale por 7 dias e para uma pessoa.</div></>}
+          <div className="linha">
+            <button className="btn-prim" onClick={() => setCriarLogin(true)}><Icone nome="mais" />Criar login</button>
+            {!convite && <button onClick={gerarConvite}><Icone nome="link" />Link de convite</button>}
+          </div>
+          {convite && <><input readOnly value={convite} onFocus={(e) => e.target.select()} style={{ marginTop: 8 }} /><div className="small muted" style={{ marginTop: 4 }}>Link copiado. Vale por 7 dias e para uma pessoa.</div></>}
+          <CriarLogin aberto={criarLogin} fechar={() => setCriarLogin(false)} papel="jogador" jogadorId={jogador.id} nome={jogador.nick} />
         </div>
       )}
     </>

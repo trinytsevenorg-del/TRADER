@@ -53,6 +53,7 @@ export default function Login({ aviso }: { aviso?: string }) {
             <input id="senha" type="password" minLength={6} autoComplete={modo === 'criar' ? 'new-password' : 'current-password'} required value={senha} onChange={(e) => setSenha(e.target.value)} />
           </div>
         )}
+        {modo === 'criar' && <p className="small muted">Para criar uma equipe você vai precisar do código de acesso. Capitão e jogadores recebem o login do dono da equipe.</p>}
         <button className="btn-prim btn-bloco" disabled={enviando}>
           {enviando ? 'Aguarde…' : modo === 'senha' ? 'Entrar' : modo === 'criar' ? 'Criar conta' : 'Enviar link'}
         </button>

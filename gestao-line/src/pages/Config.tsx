@@ -4,6 +4,8 @@ import { carregarDados } from '../lib/dados';
 import { msgErro, supabase } from '../lib/supabase';
 import { mediasReaisPorFuncao, mesAtual, NOMES_CRITERIO, NOMES_FUNCAO, REGRAS_PADRAO, somarMes, type Criterio, type Funcao, type Meta, type Regras } from '../lib/nota';
 import { Icone, Topo } from '../components/ui';
+import { CriarLogin } from '../components/CriarLogin';
+import { Link } from 'react-router-dom';
 
 type Membro = { usuario_id: string; papel: 'dono' | 'capitao' | 'jogador'; email: string | null };
 type Convite = { token: string; papel: string; expira_em: string; usado_por: string | null; jogador_id: string | null };
@@ -15,7 +17,9 @@ function Num({ valor, onChange, passo = 'any', rotulo }: { valor: number; onChan
 }
 
 export default function Config() {
-  const { org, session, podeConfigurar, recarregarOrgs, recarregar, metas: metasCtx, jogadores } = useApp();
+  const { org, session, podeConfigurar, recarregarOrgs, recarregar, metas: metasCtx, jogadores, souAdmin } = useApp();
+  const [criarCap, setCriarCap] = useState(false);
+  const [novaSenha, setNovaSenha] = useState('');
   const [regras, setRegras] = useState<Regras | null>(null);
   const [metas, setMetas] = useState<Meta[]>([]);
   const [info, setInfo] = useState({ nome: '', linha_nome: '', tag: '' });
@@ -68,6 +72,12 @@ export default function Config() {
     try { await navigator.clipboard.writeText(linkConvite(data.token)); setMsg({ tipo: 'ok', texto: 'Link do convite copiado. Mande para a pessoa.' }); } catch { /* fica na lista */ }
     carregar();
   }
+  async function trocarSenha(e: React.FormEvent) {
+    e.preventDefault();
+    const { error } = await supabase.auth.updateUser({ password: novaSenha });
+    setMsg(error ? { tipo: 'erro', texto: msgErro(error) } : { tipo: 'ok', texto: 'Senha trocada.' });
+    if (!error) setNovaSenha('');
+  }
   async function remover(m: Membro) {
     if (!confirm(`Remover ${m.email || 'este membro'} da organização?`)) return;
     const { error } = await supabase.from('membros').delete().eq('org_id', org!.id).eq('usuario_id', m.usuario_id);
@@ -89,6 +99,14 @@ export default function Config() {
         <div className="cresce"><div className="small muted">Conectado como</div><div className="corta">{session?.user.email}</div><div className="small muted">{org ? PAPEL[org.papel] + ' em ' + org.nome : ''}</div></div>
         <button onClick={() => supabase.auth.signOut()}><Icone nome="sair" />Sair</button>
       </div>
+      <form className="card" onSubmit={trocarSenha}>
+        <label htmlFor="ns">Trocar senha</label>
+        <div className="linha">
+          <input id="ns" type="password" minLength={8} required autoComplete="new-password" placeholder="Nova senha (8+ caracteres)" value={novaSenha} onChange={(e) => setNovaSenha(e.target.value)} />
+          <button>Salvar</button>
+        </div>
+      </form>
+      {souAdmin && <Link to="/admin" className="card link entre"><span><strong>Códigos de acesso</strong><span className="small muted" style={{ display: 'block' }}>Administrador: gerar códigos para donos de equipe</span></span><Icone nome="link" /></Link>}
       {msg && <div className={msg.tipo} style={{ marginBottom: 12 }}>{msg.texto}</div>}
       {org?.papel === 'jogador' || !regras ? null : (
         <>
@@ -114,7 +132,11 @@ export default function Config() {
                 </li>
               ))}
             </ul>
-            {podeConfigurar && <button className="btn-prim btn-bloco" style={{ marginTop: 8 }} onClick={() => convidar('capitao')}><Icone nome="link" />Convidar capitão</button>}
+            {podeConfigurar && <>
+              <button className="btn-prim btn-bloco" style={{ marginTop: 8 }} onClick={() => setCriarCap(true)}><Icone nome="mais" />Criar login do capitão</button>
+              <button className="btn-bloco" style={{ marginTop: 8 }} onClick={() => convidar('capitao')}><Icone nome="link" />Ou mandar link de convite</button>
+            </>}
+            <CriarLogin aberto={criarCap} fechar={() => setCriarCap(false)} papel="capitao" aoCriar={carregar} />
             {convites.filter((c) => !c.usado_por && new Date(c.expira_em) > new Date()).map((c) => (
               <div key={c.token} className="linha" style={{ marginTop: 8 }}>
                 <input readOnly value={linkConvite(c.token)} aria-label={'Convite de ' + c.papel} onFocus={(e) => e.target.select()} />
@@ -122,7 +144,7 @@ export default function Config() {
                 {(podeConfigurar || c.papel === 'jogador') && <button className="btn-icone" aria-label="Cancelar convite" onClick={() => apagarConvite(c.token)}><Icone nome="x" /></button>}
               </div>
             ))}
-            <p className="small muted" style={{ marginTop: 8 }}>O link vale por 7 dias e para uma pessoa. Para dar acesso a um jogador (fase 2), abra a ficha dele.</p>
+            <p className="small muted" style={{ marginTop: 8 }}>Só entra quem você criar ou convidar. O link vale por 7 dias e para uma pessoa. Para dar acesso a um jogador (fase 2), abra a ficha dele.</p>
           </div>
 
           <fieldset disabled={so} style={{ border: 0, padding: 0, margin: 0 }}>

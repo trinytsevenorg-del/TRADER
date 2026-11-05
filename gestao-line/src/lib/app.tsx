@@ -19,6 +19,7 @@ type Ctx = {
   podeLancar: boolean;
   podeConfigurar: boolean;
   euJogador: Jogador | null;
+  souAdmin: boolean;
 };
 
 const AppCtx = createContext<Ctx>(null as unknown as Ctx);
@@ -35,6 +36,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [orgId, setOrgId] = useState<string | null>(lerLocal(CHAVE_ORG));
   const [jogadores, setJogadores] = useState<Jogador[]>([]);
   const [metas, setMetas] = useState<Meta[]>([]);
+  const [souAdmin, setSouAdmin] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => { setSession(data.session); if (!data.session) setCarregando(false); });
@@ -43,8 +45,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const recarregarOrgs = useCallback(async () => {
-    if (!session) { setOrgs([]); return; }
-    const { data } = await supabase.from('membros').select('papel, organizacoes(id, nome, linha_nome, tag, dono_id, regras)').eq('usuario_id', session.user.id);
+    if (!session) { setOrgs([]); setSouAdmin(false); return; }
+    const [adm, { data }] = await Promise.all([supabase.rpc('sou_admin'), supabase.from('membros').select('papel, organizacoes(id, nome, linha_nome, tag, dono_id, regras)').eq('usuario_id', session.user.id)]);
+    setSouAdmin(!!adm.data);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const lista: Org[] = (data || []).filter((m: any) => m.organizacoes).map((m: any) => ({ ...m.organizacoes, regras: regrasCompletas(m.organizacoes.regras), papel: m.papel }));
     lista.sort((a, b) => a.nome.localeCompare(b.nome));
@@ -75,7 +78,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const euJogador = (org?.papel === 'jogador' && jogadores.find((j: any) => j.usuario_id === session?.user.id)) || null;
 
   return (
-    <AppCtx.Provider value={{ session, carregando, orgs, org, trocarOrg, recarregarOrgs, jogadores, metas, recarregar, podeLancar, podeConfigurar, euJogador }}>
+    <AppCtx.Provider value={{ session, carregando, orgs, org, trocarOrg, recarregarOrgs, jogadores, metas, recarregar, podeLancar, podeConfigurar, euJogador, souAdmin }}>
       {children}
     </AppCtx.Provider>
   );

@@ -16,17 +16,33 @@ O dono acompanha tudo em modo de leitura. Depois do teste, o módulo vai para de
 | `supabase/functions/_shared/ia.ts` | Copiado sem mudanças do Battle Hub (Gemini grátis, troca de modelo no 429, Claude se houver `ANTHROPIC_API_KEY`) |
 | `supabase/functions/_shared/leitura-print.ts` | Base do Battle Hub, ampliada: abates, derrubados, dano, assistências, revividos e confiança de cada campo |
 | `supabase/functions/ler-print` | Lê um print (a imagem não é guardada) |
+| `supabase/functions/criar-acesso` | O dono cria o login do capitão/jogador (e-mail + senha provisória) |
 | `supabase/functions/perfil-ff` | Estatísticas de carreira pela free-ff-api (opcional, uma foto por semana, só informativo) |
 | `tests/` | Testes do cálculo e da associação de nicks (`npm test`) |
+
+## Quem pode entrar
+
+O acesso é fechado:
+
+1. **Administrador da plataforma** (você) gera um código em *Ajustes > Códigos de acesso* (ou `#/admin`).
+   Formato `LINE-XXXX-XXXX-XXXX`, uso único, vale 30 dias (ajustável). Dá para anotar para quem é e cancelar enquanto não for usado.
+2. **Dono da equipe** cria a conta e usa o código uma vez para criar a organização. Sem código, não cria nada
+   (10 tentativas erradas por hora, no máximo).
+3. **Capitão**: o dono cria o login dele em *Ajustes > Equipe > Criar login do capitão* (e-mail + senha provisória,
+   já confirmado), ou manda um link de convite. O capitão troca a senha em *Conta*.
+4. **Jogador** (fase 2): o dono cria o login na ficha do jogador.
+
+Quem cria conta sem código nem convite não vê nenhuma equipe. Para tornar alguém administrador:
+`insert into admins_plataforma (email) values ('email@exemplo.com');` no SQL Editor.
 
 ## Supabase (projeto separado do BATTLEHUB)
 
 Projeto: **GESTAO-LINE** (`absymxkaualewjgevsvt`, sa-east-1).
 
-1. Aplicar a migração `supabase/migrations/20261105000000_inicial.sql` (SQL Editor ou `supabase db push`).
+1. Aplicar as migrações de `supabase/migrations/` em ordem (SQL Editor ou `supabase db push`).
 2. Secrets das Edge Functions: `GEMINI_API_KEY` (obrigatória para a leitura automática; plano gratuito do Google AI Studio).
    Opcionais: `ANTHROPIC_API_KEY`, `FF_API_BASE` (sua cópia da free-ff-api), `LEITURAS_POR_DIA` (padrão 300 por organização).
-3. Publicar as funções: `supabase functions deploy ler-print perfil-ff`.
+3. Publicar as funções: `supabase functions deploy ler-print perfil-ff criar-acesso`.
 4. Auth > URL Configuration: colocar a URL onde o app está publicado em *Site URL* e *Redirect URLs* (link mágico e confirmação de e-mail).
 
 ## Rodar o front
