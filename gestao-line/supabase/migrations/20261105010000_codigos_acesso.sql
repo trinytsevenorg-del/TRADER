@@ -75,14 +75,14 @@ begin
   select email into v_email from auth.users where id = auth.uid();
   insert into membros (org_id, usuario_id, papel, email) values (v_org, auth.uid(), 'dono', v_email);
   insert into metas (org_id, funcao, criterio, base, meta, destaque, ordem) values
-    (v_org, 'rush', 'abates', 1.5, 2.5, 3.5, 1),
-    (v_org, 'rush', 'derrubados', 2, 3, 4, 2),
-    (v_org, 'rush', 'dano', 600, 900, 1300, 3),
-    (v_org, 'suporte', 'revividos', 0.5, 1, 2, 1),
-    (v_org, 'suporte', 'assistencias', 1, 1.5, 2, 2),
-    (v_org, 'suporte', 'dano', 400, 650, 900, 3),
-    (v_org, 'granadeiro', 'dano', 500, 800, 1100, 1),
-    (v_org, 'granadeiro', 'assistencias', 1, 1.5, 2, 2),
+    (v_org, 'rush', 'abates', 2, 3, 4.5, 1),
+    (v_org, 'rush', 'derrubados', 2.5, 4, 5.5, 2),
+    (v_org, 'rush', 'dano', 1200, 1800, 2500, 3),
+    (v_org, 'suporte', 'revividos', 1, 1.5, 2.5, 1),
+    (v_org, 'suporte', 'assistencias', 1.5, 2.5, 3.5, 2),
+    (v_org, 'suporte', 'dano', 900, 1400, 2000, 3),
+    (v_org, 'granadeiro', 'dano', 1000, 1600, 2200, 1),
+    (v_org, 'granadeiro', 'assistencias', 1.5, 2.5, 3.5, 2),
     (v_org, 'granadeiro', 'utilitario', 3, 4, 5, 3);
   if v_cod.codigo is not null then
     update codigos_acesso set usado_por = auth.uid(), usado_em = now(), org_id = v_org where codigo = v_cod.codigo;
