@@ -78,3 +78,11 @@ npm run build          # gera dist/ (qualquer hospedagem estática: Vercel, Netl
 - Falta, nesse projeto novo: aplicar as duas migrações; cadastrar o administrador
   (`insert into admins_plataforma (email) values ('battlehubofc@gmail.com');`); publicar `ler-print`, `perfil-ff`,
   `criar-acesso`; secret `GEMINI_API_KEY`; colocar URL e chave pública em `.env`; hospedar o front.
+- O conector Supabase da sessão de 05/11 estava logado na conta antiga (sem permissão no projeto novo).
+  Antes de continuar: reconectar o Supabase em claude.ai/customize/connectors com a conta battlehubofc e abrir sessão nova.
+- Hospedagem escolhida: **GitHub Pages** (repositório público). Workflow pronto em
+  `.github/workflows/gestao-line-pages.yml` (testa, gera o build e publica a cada push que mexe em `gestao-line/`).
+  Ele lê `gestao-line/.env.production` (URL + chave publishable, que é pública e pode ir para o Git).
+  Para ativar: Settings > Pages > Source: **GitHub Actions**; e em Settings > Environments > `github-pages`
+  liberar o branch de trabalho (por padrão só o branch padrão pode publicar).
+  Depois, pôr a URL do Pages em Auth > URL Configuration (Site URL e Redirect URLs).
