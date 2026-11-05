@@ -80,6 +80,11 @@ npm run build          # gera dist/ (qualquer hospedagem estática: Vercel, Netl
   `criar-acesso`; secret `GEMINI_API_KEY`; colocar URL e chave pública em `.env`; hospedar o front.
 - O conector Supabase da sessão de 05/11 estava logado na conta antiga (sem permissão no projeto novo).
   Antes de continuar: reconectar o Supabase em claude.ai/customize/connectors com a conta battlehubofc e abrir sessão nova.
+- Decisão de 05/11: usar o projeto **Afiliados.bot** (organização trinytsevenorg-del, us-east-2, provavelmente o
+  `ekklliwezcgumizrslgx`; confirmar pela URL do painel). Ele já tem o banco do bot de afiliados: antes de aplicar as
+  migrações, listar as tabelas e funções existentes e conferir se algum nome bate com os das migrações
+  (ex.: `admins_plataforma`, `organizacoes`, gatilhos em `auth.users`). Se houver conflito, parar e avisar.
+  O conector Supabase precisa estar autorizado na organização trinytsevenorg-del.
 - Hospedagem escolhida: **GitHub Pages** (repositório público). Workflow pronto em
   `.github/workflows/gestao-line-pages.yml` (testa, gera o build e publica a cada push que mexe em `gestao-line/`).
   Ele lê `gestao-line/.env.production` (URL + chave publishable, que é pública e pode ir para o Git).
