@@ -69,3 +69,12 @@ npm run build          # gera dist/ (qualquer hospedagem estática: Vercel, Netl
 - **Taxa de acerto da leitura**: cada número que o capitão muda na conferência é contado (Configurações > Leitura automática).
 - **free-ff-api**: o repositório jinix6/free-ff-api tem só a documentação (o código está em 0xMe/FreeFire-Api), então não houve código para revisar.
   A função usa só `/api/v1/account` e `/api/v1/playerstats`, com limite de tempo, e o app segue normal se ela cair.
+
+## Situação em 05/11/2026 (para continuar numa sessão nova)
+
+- A organização antiga do Supabase (suicidysquadk) está bloqueada por cota ("Storage Size Exceeded"); o projeto
+  GESTAO-LINE (`absymxkaualewjgevsvt`) criado lá ficou vazio e pode ser apagado.
+- Projeto novo, na conta battlehubofc: `ekklliwezcgumizrslgx` (us-east-2), ainda vazio.
+- Falta, nesse projeto novo: aplicar as duas migrações; cadastrar o administrador
+  (`insert into admins_plataforma (email) values ('battlehubofc@gmail.com');`); publicar `ler-print`, `perfil-ff`,
+  `criar-acesso`; secret `GEMINI_API_KEY`; colocar URL e chave pública em `.env`; hospedar o front.
